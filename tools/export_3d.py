@@ -15,7 +15,7 @@ What goes into the page:
   * the mobility walks (Task 5) with the serving RU at every 2 m step
   * headline KPIs and what-if results
 """
-import sys, io, json, base64
+import sys, io, json, base64, html
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -97,7 +97,8 @@ uniform = np.where(~np.array(ch.meta["is_hotspot"]))[0]
 idx = np.random.default_rng(1000).choice(uniform, E["num_ues"], replace=False)
 sub = ch.subset(idx)
 names = list(STRATEGIES)
-res = {k: simulate(cfg, sub, names[i], rng=np.random.default_rng(0)) for k, i in [("B1", 0), ("T3", 4)]}
+by_short = {n.split(" ")[0]: n for n in names}           # pick B1 / T3 by name, not by list position
+res = {k: simulate(cfg, sub, by_short[k], rng=np.random.default_rng(0)) for k in ("B1", "T3")}
 users = dict(pos=sub.pos.round(2).tolist(), los=sub.los.tolist(),
              **{k: dict(serv=r["serving"].tolist(), thr=np.round(r["thr_mbps"], 2).tolist(),
                         sinr=np.round(r["sinr_db"], 1).tolist()) for k, r in res.items()})
@@ -174,10 +175,10 @@ data = dict(
     stats=dict(num_buildings_faces=int(sum(m["n"] for m in meshes)), los_pct=round(100 * float(ch.los.mean()), 1),
                users_in_pool=int(ch.U)))
 
-tpl = (ROOT / "tools" / "viewer_template.html").read_text()
+tpl = (ROOT / "tools" / "viewer_template.html").read_text(encoding="utf-8")
 out = RESULTS / "twin_3d.html"
-page = tpl.replace("/*__TWIN_DATA__*/null", json.dumps(data, separators=(",", ":")))
-page = page.replace("<title>RAN Twin 3D Viewer</title>", f"<title>{data['title'][:1].upper() + data['title'][1:]} Twin</title>", 1)
+page = tpl.replace("/*__TWIN_DATA__*/null", json.dumps(data, separators=(",", ":")).replace("</", "<\\/"))   # no early </script>
+page = page.replace("<title>RAN Twin 3D Viewer</title>", f"<title>{html.escape(data['title'][:1].upper() + data['title'][1:])} Twin</title>", 1)
 # wrap as a complete document so it opens correctly straight from disk
 doc = ('<!doctype html><html lang="en"><head><meta charset="utf-8">'
        '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"></head><body>'

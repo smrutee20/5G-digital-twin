@@ -33,7 +33,7 @@ const twin = { f: +params.get("f") || 3.5, bw: +params.get("bw") || 100, prb: +p
 if (params.get("from") === "twin") {
   $("#back").hidden = false;
   const back = params.get("back");                  // relative page to return to, e.g. ../../twin.html
-  if (back && /^[\w./-]+\.html$/.test(back)) $("#back").href = back;
+  if (back && /^(?!\/)(?!.*\/\/)[\w./-]+\.html$/.test(back)) $("#back").href = back;   // relative only: no "/x", "//host", "a:"
   const tb = $("#twinbar"); tb.hidden = false;
   tb.innerHTML = `Opened from your RAN digital twin${twin.title ? ` · <b>${esc(twin.title)}</b>` : ""} · carrier ${twin.f.toFixed(2)} GHz, ${twin.bw} MHz, ${twin.prb} PRB, ${twin.scs} kHz SCS. The gNBs on this map are what the twin models; this explorer shows everything behind them.`;
 }
@@ -61,7 +61,7 @@ const NODE_W = id => id === "UE" ? 92 : 108, NODE_H = 50;
 
 // service-based bus
 el("rect", { class: "bus", x: 420, y: BUS_Y - 9, width: 780, height: 18, rx: 9 }, gBus);
-const busLbl = el("text", { x: 410, y: BUS_Y + 4, "text-anchor": "end", fill: "#64768a", "font-size": 11, "font-family": "IBM Plex Mono, monospace" }, gBus);
+const busLbl = el("text", { x: 410, y: BUS_Y + 4, "text-anchor": "end", fill: "#64768a", "font-size": 11, "font-family": "Inter, sans-serif" }, gBus);
 busLbl.textContent = "SBI bus · HTTP/2";
 const busHit = el("rect", { x: 420, y: BUS_Y - 10, width: 780, height: 20, fill: "transparent", style: "cursor:pointer" }, gBus);
 busHit.addEventListener("click", () => select({ iface: "SBI" }));
@@ -222,7 +222,7 @@ function animateDot(step, pts) {
   const name = step.m.length > 42 ? step.m.slice(0, 40) + "…" : step.m;
   const lw = name.length * 6.7 + 16;
   el("rect", { x: -lw / 2, y: -30, width: lw, height: 20, rx: 5, fill: "#0b1016", stroke: col }, lab);
-  const lt = el("text", { y: -16, "text-anchor": "middle", fill: col, "font-size": 11.5, "font-family": "IBM Plex Mono, monospace" }, lab); lt.textContent = name;
+  const lt = el("text", { y: -16, "text-anchor": "middle", fill: col, "font-size": 11.5, "font-family": "Inter, sans-serif" }, lab); lt.textContent = name;
   const seg = []; let total = 0;
   for (let k = 1; k < pts.length; k++) { const d = Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]); seg.push(d); total += d; }
   const dur = reduceMotion ? 1 : Math.max(700, Math.min(2600, total * 2.2)) / P.speed;
@@ -347,12 +347,12 @@ function renderChart() {
   rows.forEach(r => {
     if (r.band) {
       el("rect", { x: 0, y: r.y + 4, width: W, height: BAND - 8, fill: "#111922" }, c);
-      const t = el("text", { x: 12, y: r.y + 23, fill: "#e7edf2", "font-size": 13, "font-weight": 700, "font-family": "Archivo, sans-serif" }, c); t.textContent = r.band.title;
+      const t = el("text", { x: 12, y: r.y + 23, fill: "#e7edf2", "font-size": 13, "font-weight": 700, "font-family": "Inter, sans-serif" }, c); t.textContent = r.band.title;
       return;
     }
     const s = r.s, col = PROTO[s.p].color, g = el("g", { class: "row" + (r.gi === P.idx ? " cur" : ""), "data-i": r.gi }, c);
     el("rect", { class: "rbg", x: 0, y: r.y, width: W, height: ROW, fill: "transparent" }, g);
-    const n = el("text", { x: 10, y: r.y + 21, fill: "#64768a", "font-size": 11, "font-family": "IBM Plex Mono, monospace" }, g); n.textContent = r.gi + 1;
+    const n = el("text", { x: 10, y: r.y + 21, fill: "#64768a", "font-size": 11, "font-family": "Inter, sans-serif" }, g); n.textContent = r.gi + 1;
     const x1 = lx[s.f], x2 = lx[s.t], yy = r.y + 24;
     el("line", { x1, y1: yy, x2: x2 + (x2 > x1 ? -2 : 2), y2: yy, stroke: col, "stroke-width": 2, "marker-end": `url(#ah-${s.p})`, "stroke-dasharray": s.p === "UP" ? "6 4" : "" }, g);
     const mid = (x1 + x2) / 2, span = Math.abs(x2 - x1);
@@ -652,9 +652,9 @@ document.addEventListener("click", e => { if (!e.target.closest(".search")) resB
 /* ================================================================ boot */
 addEventListener("resize", () => { if (P.tab === "flow") renderChart(); });
 renderApi();
-const startTab = params.get("tab");
+const startTab = ["map", "flow", "api", "air", "gloss"].includes(params.get("tab")) ? params.get("tab") : null;
 const startStep = +params.get("step");                 // deep link: ?step=25&tab=flow
 if (startStep > 0 && startStep <= FLAT.length) P.idx = startStep - 1;
 refresh(false);
-if (startTab && $("#v-" + startTab)) setTab(startTab);
+if (startTab) setTab(startTab);
 })();

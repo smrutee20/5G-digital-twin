@@ -41,7 +41,6 @@ SCRIPT = """<script>
 
 def patch_html(text: str) -> str:
     """Add the button (CSS + link + script) to a viewer page or the template. Idempotent."""
-    text = text.replace("<title>Iit ", "<title>IIT ")
     if MARK in text:
         return text
     spec = '<div class="spec" id="spec"></div>'
@@ -69,12 +68,16 @@ def install(results_dirs=None, verbose=True):
         for name in ("twin_3d.html", "twin_3d_fragment.html"):
             p = d / name
             if p.exists():
-                p.write_text(patch_html(p.read_text(encoding="utf-8")), encoding="utf-8")
+                try:
+                    p.write_text(patch_html(p.read_text(encoding="utf-8")), encoding="utf-8")
+                except ValueError as e:                 # an older page layout: skip it, keep going
+                    print(f"skipped {p}: {e}")
         if verbose:
-            print(f"installed explorer + button in {d.relative_to(ROOT)}")
+            print(f"installed explorer + button in {d.relative_to(ROOT) if d.is_relative_to(ROOT) else d}")
     tpl = ROOT / "tools" / "viewer_template.html"
-    new = patch_html(tpl.read_text(encoding="utf-8"))
-    if new != tpl.read_text(encoding="utf-8"):
+    old = tpl.read_text(encoding="utf-8")
+    new = patch_html(old)
+    if new != old:
         tpl.write_text(new, encoding="utf-8")
         if verbose:
             print("added button to tools/viewer_template.html")
