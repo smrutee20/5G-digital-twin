@@ -1,0 +1,7 @@
+# Python and macOS
+__pycache__/
+.venv/
+.DS_Store
+
+# made by run.py
+twin.html

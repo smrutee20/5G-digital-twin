@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IITGN 5G Twin</title>
+<!--
+  Template for twin.html. run.py puts the 3D library (three.js, from vendor/) where LIBRARIES is, and the
+  twin data and message logs where DATA is. Everything is precomputed in Python; this page only plays it back.
+    left   = the 3D campus twin: buildings, sites and sectors, RSRP map, the walking phone, its serving sector
+    right  = the 5G network: elements, interfaces, the current message moving along its interface
+    bottom = what is happening now, in one line, and the identities in use
+-->
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f4f6f9; --panel: #ffffff; --ink: #1d2330; --ink2: #5b6475; --line: #d5dae2; --muted: #eef0f4;
+  --A: #2563eb; --B: #d97706; --C: #059669; --hl: #dc2626; --n1: #7c3aed;
+  --f1: #64748b; --f2: #2563eb; --f3: #0891b2; --f4: #059669; --f5: #d97706; --f6: #db2777;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 16px; }
+h1 { font-size: 17px; margin: 0 10px 0 0; }
+button, select { font: inherit; padding: 4px 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 6px; cursor: pointer; }
+button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+.group { display: flex; gap: 4px; align-items: center; }
+.small { font-size: 12px; color: var(--ink2); }
+main { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 12px; padding: 0 16px; height: 66vh; min-height: 440px; }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; height: auto; } #stage { height: 60vh; } }
+section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; min-width: 0; position: relative; overflow: hidden; }
+h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink2); margin: 0; }
+#stage { width: 100%; height: 100%; }
+#stage canvas { display: block; }
+.overlay { position: absolute; background: rgba(255, 255, 255, .92); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; }
+#twinTitle { top: 10px; left: 10px; }
+#signal { top: 44px; left: 10px; width: 275px; }
+#signal table { border-collapse: collapse; width: 100%; margin: 4px 0; }
+#signal td { padding: 1px 4px; }
+#signal td.v { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; }
+#bar { height: 8px; border-radius: 4px; margin: 6px 0 2px; }
+#barTicks { display: flex; justify-content: space-between; color: var(--ink2); }
+#coreTitle { padding: 10px 12px 0; }
+#net { display: block; width: 100%; height: calc(100% - 30px); }
+footer { margin: 12px 16px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+#now { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+#note { font-size: 16px; font-weight: 600; flex: 1 1 300px; }
+.badge { font-size: 11px; padding: 2px 8px; border-radius: 9px; color: #fff; white-space: nowrap; }
+#ids { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 4px 12px; margin-top: 8px; }
+.id { font-size: 12px; padding: 3px 6px; border-radius: 6px; border: 1px solid transparent; }
+.id b { display: block; color: var(--ink2); font-weight: 500; font-size: 11px; }
+.id span { font-family: ui-monospace, Menlo, monospace; word-break: break-all; }
+.id.unset span { color: var(--ink2); opacity: .5; }
+.id.carried { border-color: var(--hl); background: #fdecec; }
+.node rect { fill: var(--panel); stroke: var(--ink2); stroke-width: 1.2; }
+.node.active rect { stroke: var(--hl); stroke-width: 2.5; }
+.node text { fill: var(--ink); font-size: 13px; font-weight: 600; text-anchor: middle; }
+.node text.sub { font-size: 9.5px; font-weight: 400; fill: var(--ink2); }
+.link { stroke: var(--line); stroke-width: 2; fill: none; }
+.link.serving { stroke-width: 4; }
+.link.active { stroke: var(--hl) !important; stroke-width: 3.5; }
+.link.n1 { stroke: var(--n1); stroke-dasharray: 5 4; opacity: .45; }
+.link.n1.active { opacity: 1; stroke-width: 3; stroke: var(--n1) !important; }
+.iflabel { font-size: 10.5px; fill: var(--ink2); text-anchor: middle; paint-order: stroke; stroke: var(--panel); stroke-width: 4px; }
+.iflabel.active { fill: var(--hl); font-weight: 700; }
+#dotlabel { font-size: 11.5px; font-weight: 700; fill: var(--hl); paint-order: stroke; stroke: var(--panel); stroke-width: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>IIT Gandhinagar 5G digital twin</h1>
+  <label class="group small">Route <select id="route"></select></label>
+  <button id="play">▶ Play</button>
+  <button id="next">Next step</button>
+  <label class="group small">Speed <select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+  <span class="group small">Camera <button data-view="overview">Overview</button><button data-view="follow">Follow phone</button></span>
+</header>
+
+<main>
+  <section>
+    <div id="stage"></div>
+    <div class="overlay" id="twinTitle"><h2>Digital twin: IITGN campus (ray-traced)</h2></div>
+    <div class="overlay" id="signal"></div>
+  </section>
+  <section>
+    <div id="coreTitle"><h2>5G network: phone, gNBs and core</h2></div>
+    <svg id="net" viewBox="0 0 680 470" preserveAspectRatio="xMidYMid meet"></svg>
+  </section>
+</main>
+
+<footer>
+  <div id="now"><span class="badge" id="flow"></span><span id="note"></span><span class="small" id="time"></span></div>
+  <div id="ids"></div>
+</footer>
+
+<!--LIBRARIES-->
+<script>
+const DATA = /*DATA*/null;
+const T = DATA.twin, SECTORS = T.sectors, NAMES = SECTORS.map(s => s.name);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const siteColor = site => css(`--${site}`);
+const pretty = s => s.replace(/([a-z])([A-Z])/g, "$1 $2");
+const msgName = e => e.message.replace("GTP_U", "GTP-U") + (e.nas ? ` [NAS: ${pretty(e.nas)}]` : "");
+
+// ======================================================================= LEFT: the 3D twin (three.js)
+const V = (x, y, z) => new THREE.Vector3(x, z, -y);          // twin: x east, y north, z up -> three.js: y up
+const stage = document.getElementById("stage");
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+stage.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xeef2f6);
+scene.fog = new THREE.Fog(0xeef2f6, 1800, 4200);
+const camera = new THREE.PerspectiveCamera(42, 1, 1, 8000);
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.maxPolarAngle = Math.PI * 0.49;
+scene.add(new THREE.HemisphereLight(0xffffff, 0xb8c0c8, 0.85));
+const sun = new THREE.DirectionalLight(0xffffff, 0.55); sun.position.set(-600, 1200, 800); scene.add(sun);
+
+// ground and the RSRP map (a picture of the ray-traced best-sector RSRP, laid on the ground)
+const [mx0, mx1, my0, my1] = T.rsrp_map.extent;
+const ground = new THREE.Mesh(new THREE.PlaneGeometry((mx1 - mx0) * 1.5, (my1 - my0) * 1.5), new THREE.MeshLambertMaterial({ color: 0xe3e7ec }));
+ground.rotation.x = -Math.PI / 2; ground.position.copy(V((mx0 + mx1) / 2, (my0 + my1) / 2, -0.1)); scene.add(ground);
+const mapTex = new THREE.TextureLoader().load(T.rsrp_map.png);
+mapTex.magFilter = THREE.NearestFilter;
+const map = new THREE.Mesh(new THREE.PlaneGeometry(mx1 - mx0, my1 - my0), new THREE.MeshBasicMaterial({ map: mapTex, transparent: true, depthWrite: false }));
+map.rotation.x = -Math.PI / 2; map.position.copy(V((mx0 + mx1) / 2, (my0 + my1) / 2, 0.2)); scene.add(map);
+
+// buildings: one mesh from the scene's corner points and triangles
+const decode = (s, Type) => { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return new Type(u.buffer); };
+{
+  const p = decode(T.buildings.points, Float32Array), q = new Float32Array(p.length);
+  for (let i = 0; i < p.length; i += 3) { q[i] = p[i]; q[i + 1] = p[i + 2]; q[i + 2] = -p[i + 1]; }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(q, 3));
+  g.setIndex(new THREE.BufferAttribute(decode(T.buildings.triangles, Uint32Array), 1));
+  g.computeVertexNormals();
+  scene.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0xbdb7ae, roughness: 0.9, flatShading: true, side: THREE.DoubleSide })));
+}
+
+// text labels that always face the camera
+function label(text, color, size) {
+  const c = document.createElement("canvas"); c.width = 256; c.height = 64;
+  const x = c.getContext("2d"); x.font = "700 36px system-ui, sans-serif"; x.textAlign = "center";
+  x.lineWidth = 8; x.strokeStyle = "rgba(255,255,255,0.95)"; x.strokeText(text, 128, 46); x.fillStyle = color; x.fillText(text, 128, 46);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false }));
+  s.scale.set(size * 4, size, 1); s.renderOrder = 10; return s;
+}
+
+// sites (mast + head + label) and sectors (an arrow in the direction the antenna points + its name)
+for (const [site, s] of Object.entries(T.sites)) {
+  const [x, y] = s.xy, h = s.height_m;
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 2, h, 10), new THREE.MeshStandardMaterial({ color: 0x8a939e }));
+  mast.position.copy(V(x, y, h / 2)); scene.add(mast);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(4, 16, 12), new THREE.MeshBasicMaterial({ color: siteColor(site) }));
+  head.position.copy(V(x, y, h)); scene.add(head);
+  const l = label(`Site ${site} · gNB-${site}`, siteColor(site), 46); l.position.copy(V(x, y, h + 70)); scene.add(l);
+}
+for (const s of SECTORS) {
+  const a = s.az * Math.PI / 180, t = s.tilt * Math.PI / 180;
+  const dir = V(Math.cos(a) * Math.cos(t), Math.sin(a) * Math.cos(t), -Math.sin(t)).normalize();
+  scene.add(new THREE.ArrowHelper(dir, V(...s.pos), 60, new THREE.Color(siteColor(s.site)).getHex(), 14, 9));
+  const l = label(s.name, siteColor(s.site), 26); l.position.copy(V(...s.pos).add(dir.clone().multiplyScalar(80))); scene.add(l);
+}
+
+// the walking phone, its route, and the line to its serving sector
+const walker = new THREE.Mesh(new THREE.SphereGeometry(6, 18, 14), new THREE.MeshBasicMaterial({ color: 0xdc2626 }));
+const halo = new THREE.Mesh(new THREE.RingGeometry(10, 13, 40), new THREE.MeshBasicMaterial({ color: 0xdc2626, side: THREE.DoubleSide }));
+halo.rotation.x = -Math.PI / 2;
+const servLine = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 1, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0x2563eb, transparent: true }));
+const routeGroup = new THREE.Group();
+scene.add(walker, halo, servLine, routeGroup);
+function placeLine(mesh, a, b) {                           // stretch a thin cylinder from point a to point b
+  const d = b.clone().sub(a);
+  mesh.scale.set(1, d.length(), 1);
+  mesh.position.copy(a).add(d.clone().multiplyScalar(0.5));
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+}
+
+// ======================================================================= RIGHT: the 5G network (SVG)
+const svg = document.getElementById("net"), NS = "http://www.w3.org/2000/svg";
+const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; };
+const POS = {
+  UE: [55, 240, "UE", "phone"], "gNB-A": [200, 100, "gNB-A", "site A"], "gNB-B": [200, 240, "gNB-B", "site B"],
+  "gNB-C": [200, 380, "gNB-C", "site C"], AMF: [380, 100, "AMF", "access & mobility"], SMF: [380, 240, "SMF", "sessions"],
+  UPF: [380, 380, "UPF", "user plane"], AUSF: [495, 45, "AUSF", "authentication"], NSSF: [500, 160, "NSSF", "slice selection"],
+  UDM: [625, 45, "UDM", "subscribers"], SIDF: [625, 102, "SIDF", "SUCI → SUPI"], Internet: [560, 380, "Internet", "server"],
+};
+const LINKS = [
+  ["UE", "gNB-A", "Uu"], ["UE", "gNB-B", "Uu"], ["UE", "gNB-C", "Uu"],
+  ["gNB-A", "gNB-B", "Xn"], ["gNB-B", "gNB-C", "Xn"], ["gNB-A", "gNB-C", "Xn", "M200,100 Q330,240 200,380"],
+  ["gNB-A", "AMF", "N2"], ["gNB-B", "AMF", "N2"], ["gNB-C", "AMF", "N2"],
+  ["gNB-A", "UPF", "N3"], ["gNB-B", "UPF", "N3"], ["gNB-C", "UPF", "N3"],
+  ["AMF", "SMF", "N11"], ["SMF", "UPF", "N4"], ["UPF", "Internet", "N6"],
+  ["AMF", "AUSF", "SBI"], ["AUSF", "UDM", "SBI"], ["AMF", "NSSF", "SBI"], ["UDM", "SIDF", ""],
+  ["UE", "AMF", "N1", "M55,240 C60,10 330,10 380,100"],
+];
+const key = (a, b) => [a, b].sort().join("|");
+const linkEl = {}, labelEl = {}, nodeEl = {};
+el("rect", { x: 577, y: 22, width: 96, height: 106, rx: 8, fill: "none", stroke: css("--ink2"), "stroke-dasharray": "3 3" }, svg);  // UDM holds the SIDF
+for (const [a, b, iface, d] of LINKS) {
+  const k = iface === "N1" ? "N1" : key(a, b);
+  linkEl[k] = el("path", { d: d || `M${POS[a][0]},${POS[a][1]} L${POS[b][0]},${POS[b][1]}`, class: "link" + (iface === "N1" ? " n1" : "") }, svg);
+}
+for (const [a, b, iface] of LINKS) {
+  if (!iface) continue;
+  const k = iface === "N1" ? "N1" : key(a, b), p = linkEl[k];
+  const at = p.getPointAtLength(p.getTotalLength() * (iface === "Uu" ? 0.4 : 0.5));
+  labelEl[k] = el("text", { x: at.x, y: at.y + 4, class: "iflabel" }, svg);
+  labelEl[k].textContent = iface === "N1" ? "N1 (NAS, carried over Uu + N2)" : iface;
+}
+for (const [name, [x, y, title, sub]] of Object.entries(POS)) {
+  const g = el("g", { class: "node" }, svg), w = name === "SIDF" ? 80 : 92, h = name === "SIDF" ? 36 : 42;
+  const r = el("rect", { x: x - w / 2, y: y - h / 2, width: w, height: h, rx: 7 }, g);
+  if (name.startsWith("gNB")) r.style.stroke = siteColor(name.slice(-1));
+  el("text", { x, y: y - 2 }, g).textContent = title;
+  el("text", { x, y: y + 12, class: "sub" }, g).textContent = sub;
+  nodeEl[name] = g;
+}
+const dot = el("circle", { r: 7, fill: css("--hl") }, svg);
+const dotLabel = el("text", { id: "dotlabel" }, svg);
+
+// ======================================================================= BOTTOM: identities
+const idEl = {};
+for (const [k, name] of Object.entries(DATA.identities)) {
+  const d = document.createElement("div"); d.className = "id"; d.innerHTML = `<b>${name}</b><span></span>`;
+  document.getElementById("ids").appendChild(d); idEl[k] = d;
+}
+
+// ======================================================================= the shared timeline
+// Each route has one log: walk steps, messages and notes in time order. Showing entry i updates all three areas.
+let route, log, cur = 0, playing = false, timer = null, anim = null, view = "overview";
+const routeSel = document.getElementById("route");
+for (const r of T.routes) {
+  const ho = DATA.logs[r.id].filter(e => e.message === "HandoverRequest").length;
+  routeSel.add(new Option(`Route ${r.id} · ${ho} handover${ho === 1 ? "" : "s"}`, r.id));
+}
+const speed = () => +document.getElementById("speed").value;
+const duration = e => (e.kind === "step" ? 170 : e.kind === "info" ? 1500 : e.flow === 4 ? 320 : 900) / speed();
+
+function setRoute(id) {
+  route = T.routes.find(r => r.id == id); log = DATA.logs[id]; routeSel.value = id;
+  routeGroup.clear();
+  const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(route.points.map(p => V(p[0], p[1], 1.5))),
+    new THREE.LineDashedMaterial({ color: 0x1d2330, dashSize: 5, gapSize: 4 }));
+  line.computeLineDistances(); routeGroup.add(line);
+  cur = 0;
+  setView(view);
+  go(0, false);
+}
+
+function showTwin(e) {
+  const k = e.step, [x, y] = route.points[k];
+  walker.position.copy(V(x, y, 4)); halo.position.copy(V(x, y, 0.6));
+  const s = SECTORS.find(s => s.name === e.serving);
+  servLine.visible = !!s;
+  if (s) {
+    placeLine(servLine, walker.position, V(...s.pos));
+    servLine.material.color.set(siteColor(s.site));
+    servLine.material.opacity = e.ue_state === "RRC connected" ? 1 : 0.35;     // faint while idle (camping only)
+  }
+  if (view === "follow") followCamera(k);
+  // small panel: the 3 strongest sectors here, and the serving one
+  const rs = route.rsrp[k], order = NAMES.map((n, i) => i).sort((a, b) => rs[b] - rs[a]).slice(0, 3);
+  const row = i => `<tr><td><span class="dot" style="background:${siteColor(SECTORS[i].site)}"></span>${NAMES[i]}</td>
+    <td class="v">${rs[i].toFixed(1)} dBm</td><td>${route.los[k][i] ? "line of sight" : "blocked"}${route.traced[k][i] ? "" : " · 3GPP fill"}</td></tr>`;
+  const si = NAMES.indexOf(e.serving);
+  const [lo, hi] = T.rsrp_map.dbm;
+  document.getElementById("signal").innerHTML =
+    `<b>Strongest sectors here</b> <span class="small">(step ${k} · ${k * DATA.step_m} m)</span>
+     <table>${order.map(row).join("")}</table>
+     <b>Serving sector:</b> ${si < 0 ? "none yet" : `${e.serving} on gNB-${e.serving[0]} · ${rs[si].toFixed(1)} dBm`}
+     <div class="small">${e.ue_state === "off" ? "phone switching on" : e.ue_state}</div>
+     <div id="bar" style="background:linear-gradient(90deg,${T.rsrp_map.colors.join(",")})"></div>
+     <div id="barTicks" class="small"><span>${lo}</span><span>RSRP map, best sector (dBm)</span><span>${hi}</span></div>`;
+}
+
+function showCore(e) {
+  Object.values(linkEl).forEach(p => { p.classList.remove("active", "serving"); p.style.stroke = ""; p.style.strokeDasharray = ""; });
+  Object.values(labelEl).forEach(p => p.classList.remove("active"));
+  Object.values(nodeEl).forEach(g => g.classList.remove("active"));
+  if (e.serving) {                                         // the phone's radio link to its serving gNB
+    const p = linkEl[key("UE", "gNB-" + e.serving[0])];
+    p.classList.add("serving"); p.style.stroke = siteColor(e.serving[0]);
+    if (e.ue_state !== "RRC connected") p.style.strokeDasharray = "6 5";
+  }
+  dot.style.display = dotLabel.style.display = "none";
+  if (e.kind !== "msg") return;
+  const k = key(e.src, e.dst);
+  linkEl[k]?.classList.add("active"); labelEl[k]?.classList.add("active");
+  if (e.nas) { linkEl.N1.classList.add("active"); labelEl.N1.classList.add("active"); }
+  nodeEl[e.src].classList.add("active"); nodeEl[e.dst].classList.add("active");
+}
+
+function showBottom(e) {
+  const f = document.getElementById("flow");
+  f.textContent = `Flow ${e.flow}: ${DATA.flows[e.flow]}`; f.style.background = css(`--f${e.flow}`);
+  document.getElementById("note").textContent = e.kind === "msg" ? `${msgName(e)} (${e.interface}): ${e.note}` : e.note;
+  document.getElementById("time").textContent = `t = ${(e.t / 1000).toFixed(3)} s`;
+  for (const [k, d] of Object.entries(idEl)) {
+    const v = e.ids[k];
+    d.querySelector("span").textContent = v === undefined ? "not in use" : v;
+    d.classList.toggle("unset", v === undefined);
+    d.classList.toggle("carried", e.kind === "msg" && e.carries.includes(k));
+  }
+}
+
+function animateDot(e, ms) {                               // the message travels along its interface
+  cancelAnimationFrame(anim);
+  if (e.kind !== "msg") return;
+  const p = linkEl[key(e.src, e.dst)]; if (!p) return;
+  const L = p.getTotalLength(), start = p.getPointAtLength(0);
+  const forward = Math.hypot(start.x - POS[e.src][0], start.y - POS[e.src][1]) < 1;
+  dot.style.display = dotLabel.style.display = ""; dotLabel.textContent = msgName(e);
+  const t0 = performance.now();
+  const frame = now => {
+    const f = Math.min(1, (now - t0) / (ms * 0.8)), pt = p.getPointAtLength(L * (forward ? f : 1 - f));
+    dot.setAttribute("cx", pt.x); dot.setAttribute("cy", pt.y);
+    dotLabel.setAttribute("x", Math.min(pt.x + 10, 420)); dotLabel.setAttribute("y", pt.y - 10);
+    if (f < 1) anim = requestAnimationFrame(frame);
+  };
+  anim = requestAnimationFrame(frame);
+}
+
+function go(i, keepPlaying = playing) {
+  cur = Math.min(log.length - 1, Math.max(0, i));
+  clearTimeout(timer);
+  const e = log[cur];
+  showTwin(e); showCore(e); showBottom(e);                 // one entry drives all three areas
+  const ms = duration(e);
+  animateDot(e, ms);
+  playing = keepPlaying && cur < log.length - 1;
+  document.getElementById("play").textContent = playing ? "❚❚ Pause" : "▶ Play";
+  if (playing) timer = setTimeout(() => go(cur + 1), ms);
+}
+
+// ======================================================================= camera
+function bounds() {
+  const xs = Object.values(T.sites).map(s => s.xy[0]).concat(route.points.map(p => p[0]));
+  const ys = Object.values(T.sites).map(s => s.xy[1]).concat(route.points.map(p => p[1]));
+  return [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+}
+function overviewCamera() {
+  const [x0, x1, y0, y1] = bounds(), cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, size = Math.max(x1 - x0, y1 - y0);
+  camera.position.copy(V(cx - size * 0.05, cy - size * 1.05, size * 1.45)); controls.target.copy(V(cx + size * 0.06, cy, 0));
+}
+function followCamera(k) {                                 // stand beyond the phone, looking past it at the sites
+  const [x, y] = route.points[k], xs = Object.values(T.sites).map(s => s.xy);
+  const cx = xs.reduce((a, s) => a + s[0], 0) / xs.length, cy = xs.reduce((a, s) => a + s[1], 0) / xs.length;
+  let dx = x - cx, dy = y - cy; const n = Math.hypot(dx, dy) || 1; dx /= n; dy /= n;
+  camera.position.copy(V(x + dx * 300, y + dy * 300, 220)); controls.target.copy(V(x - dx * 120, y - dy * 120, 5));
+}
+function setView(v) {
+  view = v;
+  document.querySelectorAll("[data-view]").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === v));
+  if (v === "overview") overviewCamera(); else if (log) followCamera(log[cur].step);
+  controls.update();
+}
+
+// ======================================================================= controls
+document.getElementById("play").onclick = () => go(cur >= log.length - 1 ? 0 : cur, !playing);
+document.getElementById("next").onclick = () => go(cur + 1, false);
+routeSel.onchange = () => setRoute(+routeSel.value);
+document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => setView(b.dataset.view));
+document.addEventListener("keydown", ev => {
+  if (ev.key === " " && ev.target.tagName !== "SELECT") { ev.preventDefault(); document.getElementById("play").click(); }
+});
+
+function resize() {                                         // keep the scene centred in the space right of the panel
+  const w = stage.clientWidth, h = stage.clientHeight, P = w > 700 ? 290 : 0;
+  renderer.setSize(w, h); camera.aspect = (w + P) / h;
+  if (P) camera.setViewOffset(w + P, h, 0, 0, w, h); else camera.clearViewOffset();
+  camera.updateProjectionMatrix();
+}
+addEventListener("resize", resize); resize();
+// twin.html#route=3&frame=120 opens route 3 at entry 120 (also handy for screenshots)
+setRoute(+((location.hash.match(/route=(\d)/) || [0, DATA.default_route])[1]));
+const frame0 = location.hash.match(/frame=(\d+)/);
+if (frame0) go(+frame0[1], false);
+const view0 = location.hash.match(/view=(\w+)/);
+if (view0) setView(view0[1]);
+renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+</script>
+</body>
+</html>
