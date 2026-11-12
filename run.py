@@ -118,11 +118,11 @@ def build_page(twin, logs):
     tasks = json.loads(tasks_file.read_text()) if tasks_file.exists() else {}
     data = dict(twin=twin, logs=logs, flows=FLOWS, identities=IDENTITIES, default_route=C.DEFAULT_ROUTE,
                 step_m=C.STEP_M, tasks=tasks)
-    libs = "".join("<script>\n" + (ROOT / "vendor" / f).read_text().replace("</script", "<\\/script") + "\n</script>\n"
+    libs = "".join("<script>\n" + (ROOT / "vendor" / f).read_text(encoding="utf-8").replace("</script", "<\\/script") + "\n</script>\n"
                    for f in ("three.min.js", "OrbitControls.js"))
-    page = (ROOT / "viewer.html").read_text()
+    page = (ROOT / "viewer.html").read_text(encoding="utf-8")
     page = page.replace("<!--LIBRARIES-->", libs).replace("/*DATA*/null", json.dumps(data).replace("</", "<\\/"))
-    (ROOT / "twin.html").write_text(page)
+    (ROOT / "twin.html").write_text(page, encoding="utf-8")
 
 
 def main():

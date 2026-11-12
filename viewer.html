@@ -25,6 +25,9 @@ h1 { font-size: 17px; margin: 0 10px 0 0; }
 button, select { font: inherit; padding: 4px 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 6px; cursor: pointer; }
 button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
 .group { display: flex; gap: 4px; align-items: center; }
+.learn5g { margin-left: auto; display: grid; gap: 1px; text-decoration: none; color: #fff; background: var(--A); border-radius: 8px; padding: 6px 12px; font-weight: 700; }
+.learn5g small { font: 500 11px ui-monospace, Menlo, Consolas, monospace; color: #ffffffcc; }
+.learn5g:hover { filter: brightness(1.1); }
 .small { font-size: 12px; color: var(--ink2); }
 main { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 12px; padding: 0 16px; height: 66vh; min-height: 440px; }
 @media (max-width: 900px) { main { grid-template-columns: 1fr; height: auto; } #stage { height: 60vh; } }
@@ -94,6 +97,7 @@ footer { margin: 12px 16px 16px; background: var(--panel); border: 1px solid var
   <label class="group small">Speed <select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
   </span>
   <span class="group small">Camera <button data-view="overview">Overview</button><button data-view="follow">Follow phone</button></span>
+  <a class="learn5g" id="learn5g" href="tools/understand_5g/index.html?from=twin&amp;back=..%2F..%2Ftwin.html&amp;title=IIT%20Gandhinagar%205G%20digital%20twin">Understand 5G &rarr;<small>core network, call flows, message decodes</small></a>
 </header>
 
 <main>

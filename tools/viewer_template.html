@@ -1,0 +1,459 @@
+<title>RAN Twin 3D Viewer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: full-bleed 3D canvas (a night-time survey of the site) with one instrument panel docked left; on phones the panel becomes a bottom sheet.
+   Deliberately single-theme dark: the scene reads as a radio-planning console. */
+:root {
+  color-scheme: dark;
+  --night: #0b1016;        /* page + canvas ground */
+  --panel: #111922ee;      /* instrument panel */
+  --ink: #e7edf2;
+  --ink-2: #93a4b3;
+  --rule: #243140;
+  --signal: #6fb1ff;       /* twin / channel-aware */
+  --base: #f28c5b;         /* baseline */
+  --los: #f4f2ea; --refl: #63d5f2; --diff: #f5c64a;
+  --display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--night); color: var(--ink); font-family: var(--body); font-size: 14px; overflow: hidden; }
+#stage { position: fixed; inset: 0; }
+#stage canvas { display: block; }
+.panel {
+  position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  width: 336px; background: var(--panel); border: 1px solid var(--rule); border-radius: 10px;
+  backdrop-filter: blur(6px); overflow-y: auto; display: flex; flex-direction: column;
+}
+.panel section { padding: 14px 16px; border-bottom: 1px solid var(--rule); display: grid; gap: 10px; }
+.panel section:last-child { border-bottom: 0; }
+h1 { font-family: var(--display); font-stretch: 80%; font-weight: 800; font-size: 1.45rem; line-height: 1.1; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--mono); font-weight: 500; font-size: 0.72rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-2); margin: 0; }
+.spec { font-family: var(--mono); font-size: 0.76rem; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--rule); border-radius: 7px; overflow: hidden; }
+.seg button { font: 600 0.84rem var(--body); color: var(--ink-2); background: transparent; border: 0; padding: 8px 6px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--rule); }
+.seg button[aria-pressed="true"] { color: #0b1016; }
+.seg button[data-s="B1"][aria-pressed="true"] { background: var(--base); }
+.seg button[data-s="T3"][aria-pressed="true"] { background: var(--signal); }
+.seg.three { grid-template-columns: repeat(3, 1fr); }
+.seg.three button[aria-pressed="true"] { background: var(--ink); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+.checks { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+.checks label { display: flex; gap: 7px; align-items: center; cursor: pointer; color: var(--ink); }
+.checks input { accent-color: var(--signal); }
+.kpi { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 0.84rem; }
+.kpi th, .kpi td { padding: 4px 0; text-align: right; border-bottom: 1px solid var(--rule); }
+.kpi th:first-child, .kpi td:first-child { text-align: left; color: var(--ink-2); font-weight: 400; }
+.kpi thead th { font-family: var(--mono); font-size: 0.7rem; font-weight: 500; }
+.kpi .b { color: var(--base); } .kpi .t { color: var(--signal); }
+.kpi tbody tr:last-child td { border-bottom: 0; }
+.bar img { width: 100%; height: 10px; border-radius: 3px; display: block; image-rendering: pixelated; }
+.bar .ticks { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 0.72rem; color: var(--ink-2); margin-top: 3px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.8rem; color: var(--ink-2); }
+.legend i { display: inline-block; width: 18px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+.legend .dot { width: 10px; height: 10px; border-radius: 50%; }
+.thrbar { height: 10px; border-radius: 3px; background: linear-gradient(90deg, #5a0f12, #b7302a, #e8772e, #f6c35c, #fff3c4); }
+.row { display: flex; gap: 8px; align-items: center; }
+.row select, .row input[type=range] { flex: 1; min-width: 0; }
+select { background: #0d141b; color: var(--ink); border: 1px solid var(--rule); border-radius: 6px; padding: 6px; font: inherit; }
+.btn { font: 600 0.84rem var(--body); color: var(--ink); background: #1a2532; border: 1px solid var(--rule); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+.readout { font-family: var(--mono); font-size: 0.8rem; font-variant-numeric: tabular-nums; display: grid; grid-template-columns: auto 1fr 1fr; gap: 2px 12px; }
+.readout span:nth-child(3n+1) { color: var(--ink-2); }
+.whatif { display: grid; gap: 6px; font-size: 0.8rem; }
+.whatif div { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.whatif em { font-style: normal; font-family: var(--mono); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.note { font-size: 0.8rem; color: var(--ink-2); line-height: 1.45; }
+#pick { position: fixed; right: max(12px, env(safe-area-inset-right, 0px)); top: calc(12px + env(safe-area-inset-top, 0px)); width: 250px;
+  background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 12px 14px; display: grid; gap: 6px; }
+#pick .readout { grid-template-columns: auto 1fr; }
+#hint { position: fixed; right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  font-family: var(--mono); font-size: 0.74rem; color: var(--ink-2); background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 6px 10px; }
+#toggle { display: none; }
+#empty { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--ink-2); }
+@media (max-width: 760px) {
+  .panel { top: auto; left: max(8px, env(safe-area-inset-left, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); width: auto; max-height: 52vh; }
+  .panel.collapsed { max-height: 56px; overflow: hidden; }
+  #toggle { display: inline-block; }
+  #pick { left: max(8px, env(safe-area-inset-left, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); width: auto; }
+  #hint { display: none; }
+}
+.learn5g { display: grid; gap: 2px; text-decoration: none; color: #08111b; background: var(--signal); border-radius: 8px; padding: 9px 12px; font: 700 0.95rem var(--body); }
+.learn5g small { font: 500 0.72rem var(--mono); color: #08111bcc; }
+.learn5g:hover { filter: brightness(1.08); }
+</style>
+
+<div id="stage" aria-label="3D view of the digital twin"></div>
+
+<aside class="panel" id="panel">
+  <section>
+    <div class="row" style="justify-content:space-between">
+      <h2>5G RAN digital twin</h2>
+      <button class="btn" id="toggle" aria-expanded="true">Hide</button>
+    </div>
+    <h1 id="title">Digital twin</h1>
+    <div class="spec" id="spec"></div>
+    <a class="learn5g" id="learn5g" href="understand_5g/index.html?from=twin">Understand 5G &rarr;<small>core network, call flows, message decodes</small></a>
+  </section>
+
+  <section>
+    <h2>Allocation strategy</h2>
+    <div class="seg" role="group" aria-label="Strategy">
+      <button data-s="B1" aria-pressed="false">B1 baseline</button>
+      <button data-s="T3" aria-pressed="true">T3 twin-assisted</button>
+    </div>
+    <p class="note" id="stratnote"></p>
+    <table class="kpi" id="kpi"></table>
+  </section>
+
+  <section>
+    <h2>Layers</h2>
+    <div class="checks">
+      <label><input type="checkbox" id="L_bld" checked> Buildings</label>
+      <label><input type="checkbox" id="L_ue" checked> Users</label>
+      <label><input type="checkbox" id="L_link" checked> Serving links</label>
+      <label><input type="checkbox" id="L_ray"> Ray paths</label>
+      <label><input type="checkbox" id="L_sec" checked> Sectors</label>
+      <label><input type="checkbox" id="L_walk" checked> Walks</label>
+    </div>
+    <div class="seg three" role="group" aria-label="Ground map">
+      <button data-c="rsrp" aria-pressed="true">RSRP</button>
+      <button data-c="sinr" aria-pressed="false">SINR</button>
+      <button data-c="off" aria-pressed="false">Off</button>
+    </div>
+    <div class="bar" id="covbar"><img alt=""><div class="ticks"><span></span><span></span><span></span></div></div>
+    <div>
+      <div class="thrbar"></div>
+      <div class="bar"><div class="ticks"><span>0.1</span><span>User throughput, Mbps (log)</span><span>300</span></div></div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--los)"></i>LOS ray</span>
+      <span><i style="background:var(--refl)"></i>Reflection</span>
+      <span><i style="background:var(--diff)"></i>Diffraction</span>
+    </div>
+    <p class="note">Rays: the 4 strongest traced paths from each user's twin-chosen RU.</p>
+  </section>
+
+  <section id="walksec">
+    <h2>Mobility (Task 5)</h2>
+    <div class="row">
+      <label for="walk" class="note">Route</label>
+      <select id="walk"></select>
+      <button class="btn" id="play">Play</button>
+    </div>
+    <input type="range" id="step" min="0" max="0" value="0" aria-label="Position along route">
+    <div class="readout" id="walkread"></div>
+  </section>
+
+  <section>
+    <h2>Camera</h2>
+    <div class="seg three" role="group" aria-label="Camera">
+      <button data-v="overview" aria-pressed="true">Overview</button>
+      <button data-v="top" aria-pressed="false">Top</button>
+      <button data-v="follow" aria-pressed="false">Follow walk</button>
+    </div>
+  </section>
+
+  <section id="wisec">
+    <h2>What-if (Task 7): mean throughput, Mbps</h2>
+    <div class="note">Predicted by the twin before the change, then measured on the physical network.</div>
+    <div class="whatif" id="whatif"></div>
+  </section>
+</aside>
+
+<div id="pick" hidden></div>
+<div id="hint">Drag to orbit · right-drag to pan · scroll to zoom · click a user</div>
+<div id="empty" hidden><p>No twin data in this file. Generate it with <code>python tools/export_3d.py</code>.</p></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const D = /*__TWIN_DATA__*/null;
+(function () {
+  if (!D || !window.THREE) { document.getElementById("empty").hidden = false; document.getElementById("panel").hidden = true; return; }
+  const css = getComputedStyle(document.documentElement);
+  const tok = n => css.getPropertyValue(n).trim();
+  const SITE_COL = ["#5aa2ff", "#f28c5b", "#38c99a", "#f5c64a", "#e888b3", "#9a8cf2"];
+  const siteIdx = {}; D.sites.forEach((s, i) => siteIdx[s.name] = i);
+  const siteColor = name => SITE_COL[siteIdx[name] % SITE_COL.length];
+  const V = (x, y, z) => new THREE.Vector3(x, z, -y);              // twin z-up -> three y-up
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ---------- renderer / camera
+  const stage = document.getElementById("stage");
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  stage.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(tok("--night"));
+  scene.fog = new THREE.Fog(tok("--night"), D.half * 3, D.half * 7);
+  const camera = new THREE.PerspectiveCamera(45, 1, 1, D.half * 20);
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.maxPolarAngle = Math.PI * 0.495;
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x1c242d, 0.62));
+  const sun = new THREE.DirectionalLight(0xfff6ea, 0.6); sun.position.set(-1, 2, 1.2).multiplyScalar(D.half); scene.add(sun);
+
+  // ---------- ground + coverage
+  const [x0, x1, y0, y1] = D.coverage.extent;
+  const W = x1 - x0, H = y1 - y0, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(W * 1.6, H * 1.6), new THREE.MeshLambertMaterial({ color: 0x17202a }));
+  ground.rotation.x = -Math.PI / 2; ground.position.copy(V(cx, cy, -0.05)); scene.add(ground);
+  const grid = new THREE.GridHelper(Math.ceil(Math.max(W, H) / 100) * 100, Math.ceil(Math.max(W, H) / 100), 0x2a3846, 0x1d2833);
+  grid.position.copy(V(cx, cy, 0)); scene.add(grid);
+  const loader = new THREE.TextureLoader();
+  const covMats = {};
+  ["rsrp", "sinr"].forEach(k => {
+    const tex = loader.load(D.coverage[k].img); tex.magFilter = THREE.NearestFilter;
+    covMats[k] = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
+  });
+  const cov = new THREE.Mesh(new THREE.PlaneGeometry(W, H), covMats.rsrp);
+  cov.rotation.x = -Math.PI / 2; cov.position.copy(V(cx, cy, 0.25)); scene.add(cov);
+
+  // ---------- buildings
+  const bld = new THREE.Group(); scene.add(bld);
+  const dec = (s, T) => { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return new T(u.buffer); };
+  D.meshes.forEach(m => {
+    const p = dec(m.pos, Float32Array), q = new Float32Array(p.length);
+    for (let i = 0; i < p.length; i += 3) { q[i] = p[i]; q[i + 1] = p[i + 2]; q[i + 2] = -p[i + 1]; }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(q, 3));
+    g.setIndex(new THREE.BufferAttribute(dec(m.idx, Uint32Array), 1));
+    g.computeVertexNormals();
+    bld.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: m.color, roughness: 0.85, metalness: 0.05, flatShading: true, side: THREE.DoubleSide })));
+  });
+
+  // ---------- towers and sectors
+  const sec = new THREE.Group(); scene.add(sec);
+  D.sites.forEach(s => {
+    const c = siteColor(s.name);
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.6, s.h, 10), new THREE.MeshStandardMaterial({ color: 0xcfd8e0 }));
+    mast.position.copy(V(s.xy[0], s.xy[1], s.h / 2)); scene.add(mast);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(3.2, 16, 12), new THREE.MeshBasicMaterial({ color: c }));
+    head.position.copy(V(s.xy[0], s.xy[1], s.h)); scene.add(head);
+    const label = makeLabel("Site " + s.name, c); label.position.copy(V(s.xy[0], s.xy[1], s.h + D.half * 0.06)); scene.add(label);
+  });
+  D.rus.forEach(r => {
+    const a = r.az * Math.PI / 180, t = r.tilt * Math.PI / 180;
+    const dir = V(Math.cos(a) * Math.cos(t), Math.sin(a) * Math.cos(t), -Math.sin(t)).normalize();
+    sec.add(new THREE.ArrowHelper(dir, V(...r.pos), Math.max(40, D.half * 0.12), new THREE.Color(siteColor(r.site)).getHex(), 10, 6));
+  });
+  const ruTop = D.rus.map(r => V(...r.pos));
+
+  function makeLabel(text, color) {
+    const c = document.createElement("canvas"); c.width = 256; c.height = 64;
+    const x = c.getContext("2d"); x.font = "700 34px Archivo, Arial Narrow, sans-serif"; x.textAlign = "center";
+    x.lineWidth = 7; x.strokeStyle = "rgba(11,16,22,0.9)"; x.strokeText(text, 128, 44); x.fillStyle = color; x.fillText(text, 128, 44);
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false }));
+    s.scale.set(D.half * 0.2, D.half * 0.05, 1); s.renderOrder = 10; return s;
+  }
+
+  // ---------- users
+  const thrColor = v => {
+    const stops = [[0, "#5a0f12"], [0.25, "#b7302a"], [0.5, "#e8772e"], [0.75, "#f6c35c"], [1, "#fff3c4"]];
+    const f = Math.min(1, Math.max(0, (Math.log10(Math.max(v, 0.1)) + 1) / (Math.log10(300) + 1)));
+    for (let i = 1; i < stops.length; i++) if (f <= stops[i][0]) {
+      const [fa, ca] = stops[i - 1], [fb, cb] = stops[i];
+      return new THREE.Color(ca).lerp(new THREE.Color(cb), (f - fa) / (fb - fa));
+    }
+    return new THREE.Color(stops[4][1]);
+  };
+  const ueGroup = new THREE.Group(), linkGroup = new THREE.Group(); scene.add(ueGroup, linkGroup);
+  const ueGeo = new THREE.SphereGeometry(Math.min(7, Math.max(3.5, D.half * 0.014)), 16, 12);
+  const ues = D.users.pos.map((p, i) => {
+    const m = new THREE.Mesh(ueGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    m.position.copy(V(p[0], p[1], p[2] + 2)); m.userData.i = i; ueGroup.add(m); return m;
+  });
+  const ring = new THREE.Mesh(new THREE.RingGeometry(ueGeo.parameters.radius * 1.6, ueGeo.parameters.radius * 2.1, 32), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }));
+  ring.rotation.x = -Math.PI / 2; ring.visible = false; scene.add(ring);
+
+  // ---------- rays
+  const rayGroup = new THREE.Group(); scene.add(rayGroup);
+  const RAYC = { los: tok("--los"), reflection: tok("--refl"), diffraction: tok("--diff") };
+  const rayLines = D.rays.map(r => {
+    const g = new THREE.BufferGeometry().setFromPoints(r.pts.map(p => V(...p)));
+    const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color: RAYC[r.kind], transparent: true, opacity: 0.55 }));
+    l.userData = r; rayGroup.add(l); return l;
+  });
+
+  // ---------- state
+  let strat = "T3", selected = -1, covKey = "rsrp", view = "overview";
+  const SN = { B1: "Nearest site, fixed PRB blocks. Uses geometry only.", T3: "Best server from the twin, channel-aware PF scheduling and coordinated PRB muting." };
+  function applyStrategy() {
+    const u = D.users[strat];
+    ues.forEach((m, i) => m.material.color.copy(thrColor(u.thr[i])));
+    linkGroup.clear();
+    u.serv.forEach((r, i) => {
+      const g = new THREE.BufferGeometry().setFromPoints([ues[i].position, ruTop[r]]);
+      linkGroup.add(new THREE.Line(g, new THREE.LineBasicMaterial({ color: siteColor(D.rus[r].site), transparent: true, opacity: selected < 0 || selected === i ? 0.7 : 0.12 })));
+    });
+    document.querySelectorAll("[data-s]").forEach(b => b.setAttribute("aria-pressed", b.dataset.s === strat));
+    document.getElementById("stratnote").textContent = SN[strat];
+    if (selected >= 0) showPick(selected);
+    updateWalk();
+  }
+  function applyRays() {
+    rayLines.forEach(l => {
+      const own = selected >= 0 && l.userData.u === selected;
+      l.visible = document.getElementById("L_ray").checked ? (selected < 0 || own) : own;
+      l.material.opacity = own ? 0.95 : 0.4;
+    });
+  }
+
+  // ---------- panel text
+  document.getElementById("title").textContent = D.title;
+  document.getElementById("spec").innerHTML =
+    `<span>${D.carrier.f_ghz.toFixed(1)} GHz · ${D.carrier.bw_mhz.toFixed(0)} MHz · ${D.carrier.prb} PRB</span>` +
+    `<span>${D.sites.length} sites · ${D.rus.length} sectors</span><span>${D.users.pos.length} users shown</span>`;
+  const K = D.kpi;
+  if (K.B1 && K.T3) {
+    const rows = [["Mean throughput, Mbps", "mean_thr_mbps", 1], ["5th-pct throughput, Mbps", "p5_thr_mbps", 1],
+                  ["Mean SINR, dB", "mean_sinr_db", 1], ["Outage, % < 1 Mbps", "outage_pct", 1], ["Fairness (Jain)", "jain", 2]];
+    document.getElementById("kpi").innerHTML = `<thead><tr><th>All drops</th><th class="b">B1</th><th class="t">T3</th></tr></thead><tbody>` +
+      rows.map(([l, k, d]) => `<tr><td>${l}</td><td class="b">${K.B1[k].toFixed(d)}</td><td class="t">${K.T3[k].toFixed(d)}</td></tr>`).join("") + "</tbody>";
+  }
+  const wi = document.getElementById("whatif");
+  if (D.whatif.length) wi.innerHTML = D.whatif.map(w => `<div><span>${w.id} ${w.name}</span><em>${(+w.pred).toFixed(1)} → ${(+w.actual).toFixed(1)}</em></div>`).join("");
+  else document.getElementById("wisec").hidden = true;
+
+  function setCov(k) {
+    covKey = k; cov.visible = k !== "off";
+    if (k !== "off") cov.material = covMats[k];
+    document.querySelectorAll("[data-c]").forEach(b => b.setAttribute("aria-pressed", b.dataset.c === k));
+    const bar = document.getElementById("covbar"); bar.hidden = k === "off";
+    if (k !== "off") {
+      const c = D.coverage[k]; bar.querySelector("img").src = c.bar;
+      const t = bar.querySelectorAll(".ticks span");
+      t[0].textContent = c.vmin; t[1].textContent = `${c.label}, ${c.unit}`; t[2].textContent = c.vmax;
+    }
+  }
+
+  // ---------- picking
+  const pick = document.getElementById("pick");
+  function showPick(i) {
+    const p = D.users.pos[i], b = D.users.B1, t = D.users.T3;
+    const nm = r => D.rus[r].name;
+    const myRays = D.rays.filter(r => r.u === i);
+    pick.hidden = false;
+    pick.innerHTML = `<h2>User ${i + 1}</h2><div class="readout">
+      <span>Position</span><span>${p[0].toFixed(0)} E, ${p[1].toFixed(0)} N m</span>
+      <span>B1 serving</span><span>${nm(b.serv[i])} · ${b.thr[i].toFixed(1)} Mbps · ${b.sinr[i].toFixed(1)} dB</span>
+      <span>T3 serving</span><span>${nm(t.serv[i])} · ${t.thr[i].toFixed(1)} Mbps · ${t.sinr[i].toFixed(1)} dB</span>
+      <span>LOS to T3 RU</span><span>${D.users.los[i][t.serv[i]] ? "yes" : "no"}</span>
+      <span>Strongest paths</span><span>${myRays.map(r => `${r.kind} ${r.db} dB`).join("<br>") || "none traced"}</span></div>
+      <button class="btn" id="unpick">Clear selection</button>`;
+    document.getElementById("unpick").onclick = () => select(-1);
+  }
+  function select(i) {
+    selected = i; ring.visible = i >= 0;
+    if (i >= 0) { ring.position.copy(ues[i].position).setY(0.6); showPick(i); } else pick.hidden = true;
+    applyStrategy(); applyRays();
+  }
+  const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(); let down = null;
+  renderer.domElement.addEventListener("pointerdown", e => down = [e.clientX, e.clientY]);
+  renderer.domElement.addEventListener("pointerup", e => {
+    if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return;
+    const r = renderer.domElement.getBoundingClientRect();
+    mouse.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(mouse, camera);
+    const hit = ray.intersectObjects(ues)[0];
+    select(hit ? hit.object.userData.i : -1);
+  });
+
+  // ---------- mobility walks
+  const walkGroup = new THREE.Group(); scene.add(walkGroup);
+  const walker = new THREE.Mesh(new THREE.SphereGeometry(ueGeo.parameters.radius * 1.35, 18, 14), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  const halo = new THREE.Mesh(new THREE.RingGeometry(ueGeo.parameters.radius * 2.4, ueGeo.parameters.radius * 3.0, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.85 }));
+  halo.rotation.x = -Math.PI / 2;
+  let walkLink = null, trail = null, wIdx = 0, playing = false, lastT = 0;
+  const wsel = document.getElementById("walk"), wstep = document.getElementById("step"), wplay = document.getElementById("play");
+  if (!D.mobility.length) document.getElementById("walksec").hidden = true;
+  D.mobility.forEach((w, i) => wsel.add(new Option(`Route ${w.id} · ${w.dist[w.dist.length - 1].toFixed(0)} m`, i)));
+  function buildWalk() {
+    walkGroup.clear(); const w = D.mobility[+wsel.value]; if (!w) return;
+    trail = new THREE.Line(new THREE.BufferGeometry().setFromPoints(w.x.map((x, k) => V(x, w.y[k], 1.2))),
+      new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 4, gapSize: 3, transparent: true, opacity: 0.8 }));
+    trail.computeLineDistances(); walkGroup.add(trail, walker, halo);
+    wstep.max = w.x.length - 1; wstep.value = 0; updateWalk();
+  }
+  function updateWalk() {
+    const w = D.mobility[+wsel.value]; if (!w) return;
+    const k = +wstep.value, servName = strat === "T3" ? w.serv_t3[k] : w.serv_b1[k];
+    const r = D.rus.findIndex(x => x.name === servName);
+    walker.position.copy(V(w.x[k], w.y[k], 3.5)); halo.position.copy(V(w.x[k], w.y[k], 0.6));
+    if (view === "follow") {
+      const k2 = Math.min(k + 3, w.x.length - 1), k1 = Math.max(k2 - 6, 0);
+      let dx = w.x[k2] - w.x[k1], dy = w.y[k2] - w.y[k1]; const n = Math.hypot(dx, dy) || 1; dx /= n; dy /= n;
+      camera.position.copy(V(w.x[k] - dx * 120, w.y[k] - dy * 120, 75)); controls.target.copy(V(w.x[k] + dx * 30, w.y[k] + dy * 30, 4));
+    }
+    walker.material.color.copy(thrColor(strat === "T3" ? w.thr_t3[k] : w.thr_b1[k]));
+    if (walkLink) walkGroup.remove(walkLink);
+    if (r >= 0) {
+      walkLink = new THREE.Line(new THREE.BufferGeometry().setFromPoints([walker.position, ruTop[r]]), new THREE.LineBasicMaterial({ color: siteColor(D.rus[r].site) }));
+      walkGroup.add(walkLink);
+    }
+    const ho = (arr) => arr.slice(1, k + 1).filter((v, j) => v !== arr[j]).length;
+    document.getElementById("walkread").innerHTML =
+      `<span></span><span class="b" style="color:var(--base)">B1</span><span style="color:var(--signal)">T3</span>
+       <span>Distance</span><span>${w.dist[k].toFixed(0)} m</span><span></span>
+       <span>Serving</span><span>${w.serv_b1[k]}</span><span>${w.serv_t3[k]}</span>
+       <span>Mbps</span><span>${w.thr_b1[k].toFixed(1)}</span><span>${w.thr_t3[k].toFixed(1)}</span>
+       <span>Handovers</span><span>${ho(w.serv_b1)}</span><span>${ho(w.serv_t3)}</span>`;
+  }
+  wsel.onchange = buildWalk; wstep.oninput = updateWalk;
+  wplay.onclick = () => { playing = !playing; wplay.textContent = playing ? "Pause" : "Play"; if (+wstep.value >= +wstep.max) wstep.value = 0; };
+
+  // ---------- camera presets
+  const views = {
+    overview: () => { camera.position.copy(V(cx - D.half * 1.05, cy - D.half * 1.25, D.half * 0.95)); controls.target.copy(V(cx, cy, 0)); },
+    top: () => { camera.position.copy(V(cx, cy - 1, D.half * 2.3)); controls.target.copy(V(cx, cy, 0)); },
+    follow: () => { if (!D.mobility.length) return views.overview(); updateWalk(); },
+  };
+  function setView(k) { view = k; views[k](); controls.update(); document.querySelectorAll("[data-v]").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === k)); }
+
+  // ---------- wiring
+  document.querySelectorAll("[data-s]").forEach(b => b.onclick = () => { strat = b.dataset.s; applyStrategy(); });
+  document.querySelectorAll("[data-c]").forEach(b => b.onclick = () => setCov(b.dataset.c));
+  document.querySelectorAll("[data-v]").forEach(b => b.onclick = () => setView(b.dataset.v));
+  const vis = (id, obj) => { const el = document.getElementById(id); const f = () => obj.visible = el.checked; el.onchange = f; f(); };
+  vis("L_bld", bld); vis("L_ue", ueGroup); vis("L_link", linkGroup); vis("L_sec", sec); vis("L_walk", walkGroup);
+  document.getElementById("L_ray").onchange = applyRays;
+  const panel = document.getElementById("panel"), tg = document.getElementById("toggle");
+  tg.onclick = () => { const c = panel.classList.toggle("collapsed"); tg.textContent = c ? "Show" : "Hide"; tg.setAttribute("aria-expanded", !c); resize(); };
+  if (innerWidth <= 760) tg.onclick();
+
+  function resize() {
+    const w = innerWidth, h = innerHeight; renderer.setSize(w, h);
+    const P = w > 760 && !panel.classList.contains("collapsed") ? 360 : 0;   // keep the scene centred in the space beside the panel
+    camera.aspect = (w + P) / h;
+    if (P) camera.setViewOffset(w + P, h, 0, 0, w, h); else camera.clearViewOffset();
+    camera.updateProjectionMatrix();
+  }
+  addEventListener("resize", resize); resize();
+  setCov("rsrp"); buildWalk(); applyStrategy(); applyRays(); setView("overview");
+
+  renderer.setAnimationLoop(t => {
+    if (playing && t - lastT > (reduce ? 400 : 140)) {
+      lastT = t;
+      if (+wstep.value < +wstep.max) { wstep.value = +wstep.value + 1; updateWalk(); }
+      else { playing = false; wplay.textContent = "Play"; }
+    }
+    controls.update(); renderer.render(scene, camera);
+  });
+})();
+</script>
+<script>
+/* Pass the twin's carrier settings to the 5G explorer. */
+(function () {
+  var a = document.getElementById("learn5g");
+  try {
+    if (!a || typeof D === "undefined" || !D) return;
+    var c = D.carrier, raw = c.bw_mhz * 1000 / (c.prb * 12), scs = [15, 30, 60, 120].reduce(function (b, s) { return Math.abs(s - raw) < Math.abs(b - raw) ? s : b; }, 30);
+    a.href = "understand_5g/index.html?" + new URLSearchParams({ from: "twin", f: c.f_ghz, bw: c.bw_mhz, prb: c.prb, scs: scs, title: D.title });
+  } catch (e) {}
+})();
+</script>
