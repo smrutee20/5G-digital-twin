@@ -1,0 +1,27 @@
+{'sweep': 'UEs', 'num_ues': 25, 'num_rus': 9, 'links': 225, 'max_depth': 3, 'rays_per_ru': 300000, 'diffraction': True, 'mode': 'paths', 'runtime_s': 1.4, 'scene_load_s': 0.0, 'peak_memory_mb': 754, 'backend': 'llvm-cpu'}
+{'sweep': 'UEs', 'num_ues': 100, 'num_rus': 9, 'links': 900, 'max_depth': 3, 'rays_per_ru': 300000, 'diffraction': True, 'mode': 'paths', 'runtime_s': 5.0, 'scene_load_s': 0.0, 'peak_memory_mb': 798, 'backend': 'llvm-cpu'}
+{'sweep': 'UEs', 'num_ues': 300, 'num_rus': 9, 'links': 2700, 'max_depth': 3, 'rays_per_ru': 300000, 'diffraction': True, 'mode': 'paths', 'runtime_s': 15.3, 'scene_load_s': 0.0, 'peak_memory_mb': 1202, 'backend': 'llvm-cpu'}
+{'sweep': 'UEs', 'num_ues': 600, 'num_rus': 9, 'links': 5400, 'max_depth': 3, 'rays_per_ru': 300000, 'diffraction': True, 'mode': 'paths', 'runtime_s': 31.1, 'scene_load_s': 0.0, 'peak_memory_mb': 1271, 'backend': 'llvm-cpu'}
+{'sweep': 'rays per RU', 'num_ues': 100, 'num_rus': 9, 'links': 900, 'max_depth': 3, 'rays_per_ru': 100000, 'diffraction': True, 'mode': 'paths', 'runtime_s': 1.9, 'scene_load_s': 0.0, 'peak_memory_mb': 778, 'backend': 'llvm-cpu'}
+{'sweep': 'rays per RU', 'num_ues': 100, 'num_rus': 9, 'links': 900, 'max_depth': 3, 'rays_per_ru': 300000, 'diffraction': True, 'mode': 'paths', 'runtime_s': 5.4, 'scene_load_s': 0.0, 'peak_memory_mb': 798, 'backend': 'llvm-cpu'}
+{'sweep': 'rays per RU', 'num_ues': 100, 'num_rus': 9, 'links': 900, 'max_depth': 3, 'rays_per_ru': 1000000, 'diffraction': True, 'mode': 'paths', 'runtime_s': 18.5, 'scene_load_s': 0.0, 'peak_memory_mb': 828, 'backend': 'llvm-cpu'}
+{'sweep': 'max depth', 'num_ues': 100, 'num_rus': 9, 'links': 900, 'max_depth': 1, 'rays_per_ru': 300000, 'diffraction': False, 'mode': 'paths', 'runtime_s': 3.0, 'scene_load_s': 0.0, 'peak_memory_mb': 427, 'backend': 'llvm-cpu'}
+{'sweep': 'max depth', 'num_ues': 100, 'num_rus': 9, 'links': 900, 'max_depth': 2, 'rays_per_ru': 300000, 'diffraction': False, 'mode': 'paths', 'runtime_s': 4.2, 'scene_load_s': 0.0, 'peak_memory_mb': 503, 'backend': 'llvm-cpu'}
+{'sweep': 'max depth', 'num_ues': 100, 'num_rus': 9, 'links': 900, 'max_depth': 3, 'rays_per_ru': 300000, 'diffraction': False, 'mode': 'paths', 'runtime_s': 4.8, 'scene_load_s': 0.0, 'peak_memory_mb': 586, 'backend': 'llvm-cpu'}
+{'sweep': 'max depth', 'num_ues': 100, 'num_rus': 9, 'links': 900, 'max_depth': 4, 'rays_per_ru': 300000, 'diffraction': False, 'mode': 'paths', 'runtime_s': 5.1, 'scene_load_s': 0.0, 'peak_memory_mb': 667, 'backend': 'llvm-cpu'}
+{'sweep': 'diffraction on (vs depth-3 row above)', 'num_ues': 100, 'num_rus': 9, 'links': 900, 'max_depth': 3, 'rays_per_ru': 300000, 'diffraction': True, 'mode': 'paths', 'runtime_s': 6.2, 'scene_load_s': 0.0, 'peak_memory_mb': 798, 'backend': 'llvm-cpu'}
+{'sweep': 'radio map 1300x1300 m @5 m', 'num_ues': 0, 'num_rus': 9, 'links': 0, 'max_depth': 3, 'rays_per_ru': 300000, 'diffraction': True, 'mode': 'map', 'runtime_s': 6.2, 'scene_load_s': 0.0, 'peak_memory_mb': 222, 'backend': 'llvm-cpu'}
+                                    sweep  num_ues  num_rus  links  max_depth  rays_per_ru  diffraction   mode  runtime_s  scene_load_s  peak_memory_mb   backend
+0                                     UEs       25        9    225          3       300000         True  paths        1.4           0.0             754  llvm-cpu
+1                                     UEs      100        9    900          3       300000         True  paths        5.0           0.0             798  llvm-cpu
+2                                     UEs      300        9   2700          3       300000         True  paths       15.3           0.0            1202  llvm-cpu
+3                                     UEs      600        9   5400          3       300000         True  paths       31.1           0.0            1271  llvm-cpu
+4                             rays per RU      100        9    900          3       100000         True  paths        1.9           0.0             778  llvm-cpu
+5                             rays per RU      100        9    900          3       300000         True  paths        5.4           0.0             798  llvm-cpu
+6                             rays per RU      100        9    900          3      1000000         True  paths       18.5           0.0             828  llvm-cpu
+7                               max depth      100        9    900          1       300000        False  paths        3.0           0.0             427  llvm-cpu
+8                               max depth      100        9    900          2       300000        False  paths        4.2           0.0             503  llvm-cpu
+9                               max depth      100        9    900          3       300000        False  paths        4.8           0.0             586  llvm-cpu
+10                              max depth      100        9    900          4       300000        False  paths        5.1           0.0             667  llvm-cpu
+11  diffraction on (vs depth-3 row above)      100        9    900          3       300000         True  paths        6.2           0.0             798  llvm-cpu
+12             radio map 1300x1300 m @5 m        0        9      0          3       300000         True    map        6.2           0.0             222  llvm-cpu

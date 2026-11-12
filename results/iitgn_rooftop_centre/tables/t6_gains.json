@@ -1,0 +1,44 @@
+{
+  "T3 vs B1": {
+    "mean_thr_mbps (% change)": 187.8,
+    "p5_thr_mbps (abs diff)": 15.51,
+    "p50_thr_mbps (% change)": 603.0,
+    "sum_thr_mbps (% change)": 187.8,
+    "mean_sinr_db (abs diff)": 19.0,
+    "p5_sinr_db (abs diff)": 38.63,
+    "mean_interf_dbm (abs diff)": -9.15,
+    "mean_cqi (% change)": 217.4,
+    "prb_util_pct (abs diff)": -31.55,
+    "jain (abs diff)": 0.39,
+    "outage_pct (abs diff)": -28.56,
+    "cell_se_bps_hz (% change)": 156.6
+  },
+  "T2 vs B1": {
+    "mean_thr_mbps (% change)": 89.4,
+    "p5_thr_mbps (abs diff)": 7.35,
+    "p50_thr_mbps (% change)": 290.4,
+    "sum_thr_mbps (% change)": 89.4,
+    "mean_sinr_db (abs diff)": 10.43,
+    "p5_sinr_db (abs diff)": 31.87,
+    "mean_interf_dbm (abs diff)": -2.65,
+    "mean_cqi (% change)": 68.6,
+    "prb_util_pct (abs diff)": 0.0,
+    "jain (abs diff)": 0.25,
+    "outage_pct (abs diff)": -28.56,
+    "cell_se_bps_hz (% change)": 68.7
+  },
+  "T1 vs B1": {
+    "mean_thr_mbps (% change)": 77.2,
+    "p5_thr_mbps (abs diff)": 4.32,
+    "p50_thr_mbps (% change)": 222.5,
+    "sum_thr_mbps (% change)": 77.2,
+    "mean_sinr_db (abs diff)": 9.24,
+    "p5_sinr_db (abs diff)": 31.73,
+    "mean_interf_dbm (abs diff)": -1.82,
+    "mean_cqi (% change)": 50.4,
+    "prb_util_pct (abs diff)": 0.0,
+    "jain (abs diff)": 0.18,
+    "outage_pct (abs diff)": -28.22,
+    "cell_se_bps_hz (% change)": 60.6
+  }
+}

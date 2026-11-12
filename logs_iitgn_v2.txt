@@ -1,0 +1,177 @@
+start 2026-10-26 10:59
+
+=== Tasks 1-2: ray-trace the channel database (e01_build_twin.py) ===
+backend: llvm-cpu | RUs: ['A60', 'A180', 'A300', 'B105', 'B225', 'B345', 'C53', 'C173', 'C293']
+twin: traced in 405s, rt links found 99.5%
+twin_est: traced in 469s, rt links found 99.4%
+physical: traced in 1724s, rt links found 99.8%
+fill calibration 6.8 dB, filled 0.5% of links
+{
+  "trace_twin_s": 405.37501525878906,
+  "trace_twin_est_s": 468.53127002716064,
+  "trace_physical_s": 1724.342628955841,
+  "coverage_map_s": 6.643131971359253,
+  "backend": "llvm-cpu",
+  "num_positions": 1650,
+  "num_rus": 9,
+  "rt_found_twin": 0.9950841750841751,
+  "rt_found_physical": 0.9977104377104377,
+  "fill_calib_db": 6.798116449535769,
+  "filled_frac": 0.004915824915824916
+}
+--- finished in 2608 s
+
+=== Tasks 1-2: scenario, coverage, measurements (e02_scenario_and_channels.py) ===
+{
+  "links": 14850,
+  "los_fraction": 0.6836363636363636,
+  "rt_path_found_fraction": 0.9950841750841751,
+  "best_server_los_fraction": 0.863030303030303,
+  "best_server_not_nearest_site_pct": 41.333333333333336,
+  "median_rsrp_dbm": -77.2,
+  "median_sinr_db": 3.9,
+  "median_ds_los_ns": 24.263031005859375,
+  "median_ds_nlos_ns": 77.71662139892578,
+  "median_paths_per_link": 18.0,
+  "rsrp_range_p5_p95_at_150_200m_db": 52.101104736328125
+}
+--- finished in 1 s
+
+=== Tasks 3, 4, 6: baseline vs twin-assisted allocation (e03_compare_strategies.py) ===
+drop 1/30 done
+drop 2/30 done
+drop 3/30 done
+drop 4/30 done
+drop 5/30 done
+drop 6/30 done
+drop 7/30 done
+drop 8/30 done
+drop 9/30 done
+drop 10/30 done
+drop 11/30 done
+drop 12/30 done
+drop 13/30 done
+drop 14/30 done
+drop 15/30 done
+drop 16/30 done
+drop 17/30 done
+drop 18/30 done
+drop 19/30 done
+drop 20/30 done
+drop 21/30 done
+drop 22/30 done
+drop 23/30 done
+drop 24/30 done
+drop 25/30 done
+drop 26/30 done
+drop 27/30 done
+drop 28/30 done
+drop 29/30 done
+drop 30/30 done
+strategy              B1       B2       T1        T2        T3
+mean_thr_mbps     23.285   23.327   32.960    33.842    55.252
+p5_thr_mbps        0.000    0.000    4.792     6.946    15.050
+p50_thr_mbps       9.235    9.171   18.447    21.726    42.806
+sum_thr_mbps     698.554  699.815  988.802  1015.265  1657.551
+mean_sinr_db      -0.555   -0.480    5.969     6.908    16.023
+p5_sinr_db       -26.859  -26.520   -0.975    -1.161     5.806
+mean_interf_dbm  -74.880  -74.859  -75.845   -76.432   -83.265
+mean_cqi           3.460    3.466    4.363     4.784     9.359
+prb_util_pct     100.000  100.000  100.000   100.000    67.592
+jain               0.312    0.313    0.444     0.518     0.652
+outage_pct        22.667   22.556    0.333     0.333     0.222
+cell_se_bps_hz     0.872    0.873    1.129     1.148     1.874
+done
+--- finished in 9 s
+
+=== Task 5: mobility (e05_mobility.py) ===
+trajectories: 3 [66, 66, 66]
+trajectory 1 simulated
+trajectory 2 simulated
+trajectory 3 simulated
+            thr_t3  thr_b1  sinr_t3  sinr_b1  p10_thr_t3  p10_thr_b1  handovers_t3  handovers_b1
+trajectory                                                                                      
+1            24.68    6.77     8.22    -6.65        7.23         0.0             4             1
+2            93.33    0.40    18.05   -21.81       58.93         0.0             0             0
+3            69.46   33.27     8.05   -19.24        3.59         0.0             1             0
+done
+--- finished in 63 s
+
+=== Task 6: twin fidelity vs allocation gain (e06_twin_fidelity.py) ===
+Oracle twin (= physical network) done
+Twin + measurement sync (noisy positions) done
+Twin at true UE positions done
+Twin at GPS positions (5 m error) done
+                                                    mean_thr_mbps  p5_thr_mbps  mean_sinr_db  outage_pct  best_server_agreement
+twin                                      strategy                                                                             
+Oracle twin (= physical network)          B1                21.38         0.00          0.22       23.11               1.000000
+                                          T3                55.64        16.43         16.23        0.00               1.000000
+Twin + measurement sync (noisy positions) B1                21.53         0.00          0.34       23.11               0.900667
+                                          T3                45.71        11.91         14.22        0.00               0.900667
+Twin at true UE positions                 B1                21.38         0.00          0.22       23.11               0.753333
+                                          T3                32.50         5.37         12.37        3.56               0.753333
+Twin at GPS positions (5 m error)         B1                21.53         0.00          0.34       23.11               0.740667
+                                          T3                29.55         4.48         11.69        2.89               0.740667
+--- finished in 9 s
+
+=== Task 7: what-if analysis (e07_whatif.py) ===
+scenario S0 done
+scenario S1 done
+scenario S2 done
+scenario S3 done
+scenario S4 done
+scenario S5 done
+scenario S6 done
+   scenario                              description                        metric  predicted_twin  predicted_twin_uncal  predicted_38901  actual  abs_err_twin  abs_err_twin_uncal  abs_err_38901
+0        S0          Current: 30 UEs, 9 RUs, 100 MHz     Mean UE throughput [Mbps]           59.47                 30.57            21.87   51.51          7.96               20.94          29.64
+1        S0          Current: 30 UEs, 9 RUs, 100 MHz  5th-pct UE throughput [Mbps]           16.01                  3.53             1.61   13.17          2.85                9.63          11.56
+2        S0          Current: 30 UEs, 9 RUs, 100 MHz                Mean SINR [dB]           17.08                 10.95             7.69   15.43          1.65                4.49           7.75
+3        S0          Current: 30 UEs, 9 RUs, 100 MHz           PRB utilisation [%]           68.72                 68.04            68.49   68.65          0.06                0.61           0.17
+4        S0          Current: 30 UEs, 9 RUs, 100 MHz          Outage (<1 Mbps) [%]            0.00                  4.67             5.67    0.00          0.00                4.67           5.67
+5        S1                   UE density x2 (60 UEs)     Mean UE throughput [Mbps]           29.06                 15.00            10.37   24.15          4.91                9.15          13.78
+6        S1                   UE density x2 (60 UEs)  5th-pct UE throughput [Mbps]            7.73                  2.29             1.09    6.40          1.33                4.11           5.31
+7        S1                   UE density x2 (60 UEs)                Mean SINR [dB]           16.18                 11.83             7.59   14.49          1.69                2.66           6.89
+8        S1                   UE density x2 (60 UEs)           PRB utilisation [%]           68.55                 68.22            67.96   68.32          0.23                0.10           0.36
+9        S1                   UE density x2 (60 UEs)          Outage (<1 Mbps) [%]            0.33                  4.33             5.33    0.33          0.00                4.00           5.00
+10       S2                UE density x3.3 (100 UEs)     Mean UE throughput [Mbps]           18.07                  8.09             5.72   14.26          3.81                6.17           8.54
+11       S2                UE density x3.3 (100 UEs)  5th-pct UE throughput [Mbps]            5.06                  0.79             0.59    3.82          1.24                3.03           3.23
+12       S2                UE density x3.3 (100 UEs)                Mean SINR [dB]           16.53                 11.03             7.24   14.45          2.07                3.43           7.22
+13       S2                UE density x3.3 (100 UEs)           PRB utilisation [%]           69.14                 68.17            69.11   69.26          0.12                1.09           0.15
+14       S2                UE density x3.3 (100 UEs)          Outage (<1 Mbps) [%]            0.00                  6.50            10.70    0.10          0.10                6.40          10.60
+15       S3  Event hotspot: +40 UEs in a 45 m radius     Mean UE throughput [Mbps]           23.60                 12.98             9.57   19.59          4.01                6.61          10.03
+16       S3  Event hotspot: +40 UEs in a 45 m radius  5th-pct UE throughput [Mbps]            4.64                  1.75             1.08    3.41          1.23                1.66           2.33
+17       S3  Event hotspot: +40 UEs in a 45 m radius                Mean SINR [dB]           16.63                 10.69             8.03   14.08          2.55                3.39           6.05
+18       S3  Event hotspot: +40 UEs in a 45 m radius           PRB utilisation [%]           69.12                 69.25            69.06   69.07          0.06                0.19           0.00
+19       S3  Event hotspot: +40 UEs in a 45 m radius          Outage (<1 Mbps) [%]            0.00                  2.86             5.00    0.00          0.00                2.86           5.00
+20       S4                Carrier reduced to 40 MHz     Mean UE throughput [Mbps]           23.25                 11.93             8.42   19.85          3.41                7.92          11.43
+21       S4                Carrier reduced to 40 MHz  5th-pct UE throughput [Mbps]            6.03                  1.41             0.52    4.89          1.14                3.48           4.36
+22       S4                Carrier reduced to 40 MHz                Mean SINR [dB]           17.05                 10.77             7.68   15.33          1.72                4.57           7.65
+23       S4                Carrier reduced to 40 MHz           PRB utilisation [%]           68.80                 68.24            68.57   68.77          0.04                0.53           0.19
+24       S4                Carrier reduced to 40 MHz          Outage (<1 Mbps) [%]            0.00                  5.67             9.67    0.00          0.00                5.67           9.67
+25       S5       Energy saving: site B switched off     Mean UE throughput [Mbps]           55.39                 30.93            26.84   50.10          5.29               19.17          23.26
+26       S5       Energy saving: site B switched off  5th-pct UE throughput [Mbps]           11.53                  2.51             4.10   10.40          1.14                7.88           6.29
+27       S5       Energy saving: site B switched off                Mean SINR [dB]           20.90                 14.60            12.94   19.50          1.40                4.90           6.56
+28       S5       Energy saving: site B switched off           PRB utilisation [%]           73.11                 73.31            72.22   73.03          0.08                0.28           0.81
+29       S5       Energy saving: site B switched off          Outage (<1 Mbps) [%]            0.00                  6.00             2.33    0.00          0.00                6.00           2.33
+30       S6     Roll back to baseline scheduler (B1)     Mean UE throughput [Mbps]           26.13                 23.94            27.66   25.37          0.76                1.44           2.29
+31       S6     Roll back to baseline scheduler (B1)  5th-pct UE throughput [Mbps]            0.00                  0.00             1.18    0.00          0.00                0.00           1.18
+32       S6     Roll back to baseline scheduler (B1)                Mean SINR [dB]            0.28                  0.99             4.80   -0.10          0.37                1.09           4.89
+33       S6     Roll back to baseline scheduler (B1)           PRB utilisation [%]          100.00                100.00           100.00  100.00          0.00                0.00           0.00
+34       S6     Roll back to baseline scheduler (B1)          Outage (<1 Mbps) [%]           28.00                 20.33             5.00   26.00          2.00                5.67          21.00
+   scenario                              description                        metric  predicted_change_twin_pct  predicted_change_twin_uncal_pct  predicted_change_38901_pct  actual_change_pct
+0        S1                   UE density x2 (60 UEs)     Mean UE throughput [Mbps]                      -51.1                            -50.9                       -52.6              -53.1
+1        S1                   UE density x2 (60 UEs)  5th-pct UE throughput [Mbps]                      -51.7                            -35.3                       -32.3              -51.4
+2        S2                UE density x3.3 (100 UEs)     Mean UE throughput [Mbps]                      -69.6                            -73.5                       -73.8              -72.3
+3        S2                UE density x3.3 (100 UEs)  5th-pct UE throughput [Mbps]                      -68.4                            -77.6                       -63.2              -71.0
+4        S3  Event hotspot: +40 UEs in a 45 m radius     Mean UE throughput [Mbps]                      -60.3                            -57.5                       -56.3              -62.0
+5        S3  Event hotspot: +40 UEs in a 45 m radius  5th-pct UE throughput [Mbps]                      -71.0                            -50.5                       -32.8              -74.1
+6        S4                Carrier reduced to 40 MHz     Mean UE throughput [Mbps]                      -60.9                            -61.0                       -61.5              -61.5
+7        S4                Carrier reduced to 40 MHz  5th-pct UE throughput [Mbps]                      -62.4                            -60.2                       -67.5              -62.9
+8        S5       Energy saving: site B switched off     Mean UE throughput [Mbps]                       -6.9                              1.2                        22.7               -2.7
+9        S5       Energy saving: site B switched off  5th-pct UE throughput [Mbps]                      -28.0                            -28.9                       155.4              -21.1
+10       S6     Roll back to baseline scheduler (B1)     Mean UE throughput [Mbps]                      -56.1                            -21.7                        26.5              -50.7
+11       S6     Roll back to baseline scheduler (B1)  5th-pct UE throughput [Mbps]                     -100.0                           -100.0                       -26.9             -100.0
+done
+--- finished in 31 s
+exit=0
+end 2026-10-26 11:44

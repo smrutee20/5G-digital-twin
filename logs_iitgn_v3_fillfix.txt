@@ -1,0 +1,206 @@
+
+=== Tasks 1-2: ray-trace the channel database (e01_build_twin.py) ===
+backend: llvm-cpu | RUs: ['A60', 'A180', 'A300', 'B105', 'B225', 'B345', 'C53', 'C173', 'C293']
+twin: loaded cached trace
+twin_est: loaded cached trace
+physical: loaded cached trace
+fill calibration 10.3 dB, filled 4.3% of links (0.5% no path, 3.8% > 18.0 dB below 38.901 NLOS)
+{
+  "trace_twin_s": 405.37501525878906,
+  "trace_twin_est_s": 468.53127002716064,
+  "trace_physical_s": 1724.342628955841,
+  "coverage_map_s": 4.75346827507019,
+  "backend": "llvm-cpu",
+  "num_positions": 1650,
+  "num_rus": 9,
+  "rt_found_twin": 0.9950841750841751,
+  "rt_found_physical": 0.9977104377104377,
+  "fill_calib_db": 10.274456528129136,
+  "filled_frac": 0.04296296296296296,
+  "filled_weak_frac": 0.038047138047138045,
+  "fill_weak_db": 18.0
+}
+--- finished in 7 s
+
+=== Tasks 1-2: scenario, coverage, measurements (e02_scenario_and_channels.py) ===
+{
+  "links": 14850,
+  "los_fraction": 0.6836363636363636,
+  "rt_path_found_fraction": 0.957037037037037,
+  "best_server_los_fraction": 0.8624242424242424,
+  "best_server_not_nearest_site_pct": 39.21212121212122,
+  "median_rsrp_dbm": -77.2,
+  "median_sinr_db": 4.0,
+  "median_ds_los_ns": 24.263031005859375,
+  "median_ds_nlos_ns": 78.94847106933594,
+  "median_paths_per_link": 19.0,
+  "rsrp_range_p5_p95_at_150_200m_db": 46.191097259521484
+}
+--- finished in 1 s
+
+=== Tasks 3, 4, 6: baseline vs twin-assisted allocation (e03_compare_strategies.py) ===
+drop 1/30 done
+drop 2/30 done
+drop 3/30 done
+drop 4/30 done
+drop 5/30 done
+drop 6/30 done
+drop 7/30 done
+drop 8/30 done
+drop 9/30 done
+drop 10/30 done
+drop 11/30 done
+drop 12/30 done
+drop 13/30 done
+drop 14/30 done
+drop 15/30 done
+drop 16/30 done
+drop 17/30 done
+drop 18/30 done
+drop 19/30 done
+drop 20/30 done
+drop 21/30 done
+drop 22/30 done
+drop 23/30 done
+drop 24/30 done
+drop 25/30 done
+drop 26/30 done
+drop 27/30 done
+drop 28/30 done
+drop 29/30 done
+drop 30/30 done
+strategy              B1       B2       T1       T2        T3
+mean_thr_mbps     23.861   23.831   31.835   32.347    54.591
+p5_thr_mbps        0.043    0.022    4.915    7.084    16.669
+p50_thr_mbps      10.224    9.883   18.453   21.557    44.072
+sum_thr_mbps     715.827  714.945  955.035  970.413  1637.743
+mean_sinr_db       1.492    1.561    5.912    6.725    16.023
+p5_sinr_db       -16.160  -16.006   -0.801   -0.998     6.617
+mean_interf_dbm  -74.372  -74.349  -75.111  -75.595   -82.414
+mean_cqi           3.574    3.574    4.308    4.670     9.332
+prb_util_pct     100.000  100.000  100.000  100.000    67.294
+jain               0.330    0.331    0.449    0.533     0.677
+outage_pct        19.222   19.111    0.222    0.000     0.000
+cell_se_bps_hz     0.893    0.892    1.096    1.097     1.852
+done
+--- finished in 9 s
+
+=== Task 5: mobility (e05_mobility.py) ===
+trajectories: 3 [66, 66, 66]
+trajectory 1 simulated
+trajectory 2 simulated
+trajectory 3 simulated
+            thr_t3  thr_b1  sinr_t3  sinr_b1  p10_thr_t3  p10_thr_b1  handovers_t3  handovers_b1
+trajectory                                                                                      
+1            53.33    0.40    20.91   -19.86       27.94         0.0             0             0
+2            25.50    6.92     8.91    -6.63        6.74         0.0             4             1
+3            93.12   61.82     8.91     4.92       23.28         0.0             2             0
+done
+--- finished in 50 s
+
+=== Task 6: twin fidelity vs allocation gain (e06_twin_fidelity.py) ===
+Oracle twin (= physical network) done
+Twin + measurement sync (noisy positions) done
+Twin at true UE positions done
+Twin at GPS positions (5 m error) done
+                                                    mean_thr_mbps  p5_thr_mbps  mean_sinr_db  outage_pct  best_server_agreement
+twin                                      strategy                                                                             
+Oracle twin (= physical network)          B1                23.35         0.04          1.44       20.22               1.000000
+                                          T3                56.78        17.18         16.38        0.00               1.000000
+Twin + measurement sync (noisy positions) B1                23.51         0.04          1.56       20.22               0.900667
+                                          T3                46.90        12.10         14.37        0.00               0.900667
+Twin at true UE positions                 B1                23.35         0.04          1.44       20.22               0.752000
+                                          T3                36.99         8.91         13.48        0.44               0.752000
+Twin at GPS positions (5 m error)         B1                23.51         0.04          1.56       20.22               0.744667
+                                          T3                31.65         6.57         12.27        1.11               0.744667
+--- finished in 9 s
+
+=== Task 7: what-if analysis (e07_whatif.py) ===
+scenario S0 done
+scenario S1 done
+scenario S2 done
+scenario S3 done
+scenario S4 done
+scenario S5 done
+scenario S6 done
+   scenario                              description                        metric  predicted_twin  predicted_twin_uncal  predicted_38901  actual  abs_err_twin  abs_err_twin_uncal  abs_err_38901
+0        S0          Current: 30 UEs, 9 RUs, 100 MHz     Mean UE throughput [Mbps]           59.12                 33.66            21.75   50.55          8.57               16.89          28.80
+1        S0          Current: 30 UEs, 9 RUs, 100 MHz  5th-pct UE throughput [Mbps]           16.80                  4.69             2.80   13.51          3.29                8.82          10.71
+2        S0          Current: 30 UEs, 9 RUs, 100 MHz                Mean SINR [dB]           16.88                 11.86             8.06   15.25          1.63                3.39           7.20
+3        S0          Current: 30 UEs, 9 RUs, 100 MHz           PRB utilisation [%]           67.90                 67.59            67.62   67.85          0.05                0.26           0.23
+4        S0          Current: 30 UEs, 9 RUs, 100 MHz          Outage (<1 Mbps) [%]            0.00                  2.67             3.33    0.00          0.00                2.67           3.33
+5        S1                   UE density x2 (60 UEs)     Mean UE throughput [Mbps]           29.24                 15.18            10.46   24.50          4.75                9.32          14.04
+6        S1                   UE density x2 (60 UEs)  5th-pct UE throughput [Mbps]            8.23                  3.14             1.51    6.66          1.57                3.52           5.15
+7        S1                   UE density x2 (60 UEs)                Mean SINR [dB]           16.30                 12.39             7.90   14.62          1.68                2.23           6.71
+8        S1                   UE density x2 (60 UEs)           PRB utilisation [%]           67.84                 67.46            67.36   67.68          0.16                0.21           0.31
+9        S1                   UE density x2 (60 UEs)          Outage (<1 Mbps) [%]            0.00                  2.67             3.33    0.00          0.00                2.67           3.33
+10       S2                UE density x3.3 (100 UEs)     Mean UE throughput [Mbps]           18.00                  8.41             5.63   14.50          3.50                6.09           8.87
+11       S2                UE density x3.3 (100 UEs)  5th-pct UE throughput [Mbps]            5.24                  1.44             0.73    4.06          1.17                2.62           3.33
+12       S2                UE density x3.3 (100 UEs)                Mean SINR [dB]           16.55                 11.86             7.50   14.58          1.98                2.71           7.08
+13       S2                UE density x3.3 (100 UEs)           PRB utilisation [%]           68.46                 67.76            68.37   68.60          0.14                0.85           0.24
+14       S2                UE density x3.3 (100 UEs)          Outage (<1 Mbps) [%]            0.00                  3.80             7.70    0.00          0.00                3.80           7.70
+15       S3  Event hotspot: +40 UEs in a 45 m radius     Mean UE throughput [Mbps]           23.84                 13.81             9.86   19.63          4.22                5.82           9.77
+16       S3  Event hotspot: +40 UEs in a 45 m radius  5th-pct UE throughput [Mbps]            4.73                  2.04             1.27    3.48          1.25                1.44           2.21
+17       S3  Event hotspot: +40 UEs in a 45 m radius                Mean SINR [dB]           16.60                 11.39             8.35   14.05          2.56                2.66           5.70
+18       S3  Event hotspot: +40 UEs in a 45 m radius           PRB utilisation [%]           68.65                 68.68            68.30   68.55          0.11                0.13           0.25
+19       S3  Event hotspot: +40 UEs in a 45 m radius          Outage (<1 Mbps) [%]            0.00                  1.86             3.43    0.00          0.00                1.86           3.43
+20       S4                Carrier reduced to 40 MHz     Mean UE throughput [Mbps]           23.14                 13.23             8.50   19.66          3.48                6.43          11.16
+21       S4                Carrier reduced to 40 MHz  5th-pct UE throughput [Mbps]            6.24                  1.82             1.09    4.99          1.25                3.17           3.89
+22       S4                Carrier reduced to 40 MHz                Mean SINR [dB]           16.92                 11.86             8.09   15.23          1.69                3.37           7.14
+23       S4                Carrier reduced to 40 MHz           PRB utilisation [%]           67.79                 67.66            67.77   67.71          0.08                0.04           0.06
+24       S4                Carrier reduced to 40 MHz          Outage (<1 Mbps) [%]            0.00                  4.33             6.67    0.00          0.00                4.33           6.67
+25       S5       Energy saving: site B switched off     Mean UE throughput [Mbps]           55.10                 30.82            26.45   49.66          5.45               18.84          23.21
+26       S5       Energy saving: site B switched off  5th-pct UE throughput [Mbps]           12.30                  3.56             4.72   11.18          1.12                7.62           6.46
+27       S5       Energy saving: site B switched off                Mean SINR [dB]           21.19                 16.51            13.25   19.80          1.39                3.29           6.55
+28       S5       Energy saving: site B switched off           PRB utilisation [%]           71.88                 70.03            71.34   71.93          0.06                1.91           0.59
+29       S5       Energy saving: site B switched off          Outage (<1 Mbps) [%]            0.00                  3.67             2.00    0.33          0.33                3.33           1.67
+30       S6     Roll back to baseline scheduler (B1)     Mean UE throughput [Mbps]           26.97                 24.11            27.66   26.43          0.54                2.32           1.23
+31       S6     Roll back to baseline scheduler (B1)  5th-pct UE throughput [Mbps]            0.00                  0.04             1.18    0.00          0.00                0.04           1.18
+32       S6     Roll back to baseline scheduler (B1)                Mean SINR [dB]            1.64                  1.87             4.80    1.55          0.08                0.32           3.24
+33       S6     Roll back to baseline scheduler (B1)           PRB utilisation [%]          100.00                100.00           100.00  100.00          0.00                0.00           0.00
+34       S6     Roll back to baseline scheduler (B1)          Outage (<1 Mbps) [%]           25.00                 18.67             5.00   23.33          1.67                4.67          18.33
+   scenario                              description                        metric  predicted_change_twin_pct  predicted_change_twin_uncal_pct  predicted_change_38901_pct  actual_change_pct
+0        S1                   UE density x2 (60 UEs)     Mean UE throughput [Mbps]                      -50.5                            -54.9                       -51.9              -51.5
+1        S1                   UE density x2 (60 UEs)  5th-pct UE throughput [Mbps]                      -51.0                            -33.0                       -46.1              -50.7
+2        S2                UE density x3.3 (100 UEs)     Mean UE throughput [Mbps]                      -69.5                            -75.0                       -74.1              -71.3
+3        S2                UE density x3.3 (100 UEs)  5th-pct UE throughput [Mbps]                      -68.8                            -69.3                       -73.9              -69.9
+4        S3  Event hotspot: +40 UEs in a 45 m radius     Mean UE throughput [Mbps]                      -59.7                            -59.0                       -54.7              -61.2
+5        S3  Event hotspot: +40 UEs in a 45 m radius  5th-pct UE throughput [Mbps]                      -71.9                            -56.5                       -54.8              -74.3
+6        S4                Carrier reduced to 40 MHz     Mean UE throughput [Mbps]                      -60.9                            -60.7                       -60.9              -61.1
+7        S4                Carrier reduced to 40 MHz  5th-pct UE throughput [Mbps]                      -62.8                            -61.2                       -60.9              -63.1
+8        S5       Energy saving: site B switched off     Mean UE throughput [Mbps]                       -6.8                             -8.4                        21.6               -1.8
+9        S5       Energy saving: site B switched off  5th-pct UE throughput [Mbps]                      -26.8                            -24.1                        68.5              -17.2
+10       S6     Roll back to baseline scheduler (B1)     Mean UE throughput [Mbps]                      -54.4                            -28.4                        27.2              -47.7
+11       S6     Roll back to baseline scheduler (B1)  5th-pct UE throughput [Mbps]                     -100.0                            -99.0                       -58.0             -100.0
+done
+--- finished in 31 s
+
+=== Task 8: computational requirements (e08_benchmark.py) ===
+{'sweep': 'UEs', 'num_ues': 25, 'num_rus': 9, 'links': 225, 'max_depth': 3, 'rays_per_ru': 300000, 'diffraction': True, 'mode': 'paths', 'runtime_s': 2.2, 'scene_load_s': 0.0, 'peak_memory_mb': 822880, 'backend': 'llvm-cpu'}
+{'sweep': 'UEs', 'num_ues': 100, 'num_rus': 9, 'links': 900, 'max_depth': 3, 'rays_per_ru': 300000, 'diffraction': True, 'mode': 'paths', 'runtime_s': 5.4, 'scene_load_s': 0.0, 'peak_memory_mb': 860864, 'backend': 'llvm-cpu'}
+{'sweep': 'UEs', 'num_ues': 300, 'num_rus': 9, 'links': 2700, 'max_depth': 3, 'rays_per_ru': 300000, 'diffraction': True, 'mode': 'paths', 'runtime_s': 15.8, 'scene_load_s': 0.0, 'peak_memory_mb': 1274880, 'backend': 'llvm-cpu'}
+{'sweep': 'UEs', 'num_ues': 600, 'num_rus': 9, 'links': 5400, 'max_depth': 3, 'rays_per_ru': 300000, 'diffraction': True, 'mode': 'paths', 'runtime_s': 30.8, 'scene_load_s': 0.0, 'peak_memory_mb': 1325824, 'backend': 'llvm-cpu'}
+{'sweep': 'rays per RU', 'num_ues': 100, 'num_rus': 9, 'links': 900, 'max_depth': 3, 'rays_per_ru': 100000, 'diffraction': True, 'mode': 'paths', 'runtime_s': 2.1, 'scene_load_s': 0.0, 'peak_memory_mb': 840064, 'backend': 'llvm-cpu'}
+{'sweep': 'rays per RU', 'num_ues': 100, 'num_rus': 9, 'links': 900, 'max_depth': 3, 'rays_per_ru': 300000, 'diffraction': True, 'mode': 'paths', 'runtime_s': 5.3, 'scene_load_s': 0.0, 'peak_memory_mb': 817056, 'backend': 'llvm-cpu'}
+{'sweep': 'rays per RU', 'num_ues': 100, 'num_rus': 9, 'links': 900, 'max_depth': 3, 'rays_per_ru': 1000000, 'diffraction': True, 'mode': 'paths', 'runtime_s': 18.4, 'scene_load_s': 0.0, 'peak_memory_mb': 896928, 'backend': 'llvm-cpu'}
+{'sweep': 'max depth', 'num_ues': 100, 'num_rus': 9, 'links': 900, 'max_depth': 1, 'rays_per_ru': 300000, 'diffraction': False, 'mode': 'paths', 'runtime_s': 3.2, 'scene_load_s': 0.0, 'peak_memory_mb': 473632, 'backend': 'llvm-cpu'}
+{'sweep': 'max depth', 'num_ues': 100, 'num_rus': 9, 'links': 900, 'max_depth': 2, 'rays_per_ru': 300000, 'diffraction': False, 'mode': 'paths', 'runtime_s': 4.3, 'scene_load_s': 0.0, 'peak_memory_mb': 552688, 'backend': 'llvm-cpu'}
+{'sweep': 'max depth', 'num_ues': 100, 'num_rus': 9, 'links': 900, 'max_depth': 3, 'rays_per_ru': 300000, 'diffraction': False, 'mode': 'paths', 'runtime_s': 4.9, 'scene_load_s': 0.0, 'peak_memory_mb': 637136, 'backend': 'llvm-cpu'}
+{'sweep': 'max depth', 'num_ues': 100, 'num_rus': 9, 'links': 900, 'max_depth': 4, 'rays_per_ru': 300000, 'diffraction': False, 'mode': 'paths', 'runtime_s': 5.1, 'scene_load_s': 0.0, 'peak_memory_mb': 720944, 'backend': 'llvm-cpu'}
+{'sweep': 'diffraction on (vs depth-3 row above)', 'num_ues': 100, 'num_rus': 9, 'links': 900, 'max_depth': 3, 'rays_per_ru': 300000, 'diffraction': True, 'mode': 'paths', 'runtime_s': 5.6, 'scene_load_s': 0.0, 'peak_memory_mb': 817216, 'backend': 'llvm-cpu'}
+{'sweep': 'radio map 1300x1300 m @5 m', 'num_ues': 0, 'num_rus': 9, 'links': 0, 'max_depth': 3, 'rays_per_ru': 300000, 'diffraction': True, 'mode': 'map', 'runtime_s': 5.8, 'scene_load_s': 0.0, 'peak_memory_mb': 227296, 'backend': 'llvm-cpu'}
+                                    sweep  num_ues  num_rus  links  max_depth  rays_per_ru  diffraction   mode  runtime_s  scene_load_s  peak_memory_mb   backend
+0                                     UEs       25        9    225          3       300000         True  paths        2.2           0.0          822880  llvm-cpu
+1                                     UEs      100        9    900          3       300000         True  paths        5.4           0.0          860864  llvm-cpu
+2                                     UEs      300        9   2700          3       300000         True  paths       15.8           0.0         1274880  llvm-cpu
+3                                     UEs      600        9   5400          3       300000         True  paths       30.8           0.0         1325824  llvm-cpu
+4                             rays per RU      100        9    900          3       100000         True  paths        2.1           0.0          840064  llvm-cpu
+5                             rays per RU      100        9    900          3       300000         True  paths        5.3           0.0          817056  llvm-cpu
+6                             rays per RU      100        9    900          3      1000000         True  paths       18.4           0.0          896928  llvm-cpu
+7                               max depth      100        9    900          1       300000        False  paths        3.2           0.0          473632  llvm-cpu
+8                               max depth      100        9    900          2       300000        False  paths        4.3           0.0          552688  llvm-cpu
+9                               max depth      100        9    900          3       300000        False  paths        4.9           0.0          637136  llvm-cpu
+10                              max depth      100        9    900          4       300000        False  paths        5.1           0.0          720944  llvm-cpu
+11  diffraction on (vs depth-3 row above)      100        9    900          3       300000         True  paths        5.6           0.0          817216  llvm-cpu
+12             radio map 1300x1300 m @5 m        0        9      0          3       300000         True    map        5.8           0.0          227296  llvm-cpu
+--- finished in 119 s

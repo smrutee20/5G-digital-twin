@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>5G Flow Viewer</title>
+<style>
+:root {
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+  --cp: #eb6834; --up: #2a78d6; --sel: #1baf7a; --bld: #cfcdc5; --off: #e34948;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --cp: #d95926; --up: #3987e5; --sel: #199e70; --bld: #3a3a37; --off: #e66767;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+  --cp: #d95926; --up: #3987e5; --sel: #199e70; --bld: #3a3a37; --off: #e66767;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink);
+  font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+header { padding: 12px 16px 8px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+header h1 { font-size: 16px; margin: 0 12px 0 0; }
+label { color: var(--ink2); font-size: 12px; }
+select, button, input[type=range] { font: inherit; color: var(--ink); }
+select, button { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; }
+button { cursor: pointer; min-width: 32px; }
+button:hover, select:hover { border-color: var(--axis); }
+.bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 0 16px 10px; }
+.bar input[type=range] { flex: 1 1 260px; min-width: 160px; accent-color: var(--sel); }
+#tlabel { font-variant-numeric: tabular-nums; min-width: 92px; }
+main { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 12px; padding: 0 16px 16px; }
+@media (max-width: 1100px) { main { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.card h2 { font-size: 13px; margin: 0 0 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.card h2 .sub { color: var(--muted); font-weight: 400; }
+svg { display: block; width: 100%; height: auto; }
+#map { max-height: 560px; }
+.legend { display: flex; gap: 14px; color: var(--ink2); font-size: 12px; flex-wrap: wrap; }
+.sw { display: inline-block; width: 18px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+#log { font: 11.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink2); max-height: 150px; overflow: auto;
+  border-top: 1px solid var(--grid); margin-top: 6px; padding-top: 6px; }
+#log div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#log b { color: var(--ink); font-weight: 600; }
+#seqwrap { max-height: 430px; overflow: auto; border: 1px solid var(--grid); border-radius: 6px; }
+#detail { font: 11.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-word;
+  max-height: 170px; overflow: auto; color: var(--ink2); border-top: 1px solid var(--grid); margin-top: 8px; padding-top: 6px; }
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 6px; }
+@media (max-width: 560px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tile { border: 1px solid var(--grid); border-radius: 8px; padding: 6px 8px; }
+.tile .k { color: var(--muted); font-size: 11px; }
+.tile .v { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tile .u { color: var(--ink2); font-size: 11px; font-weight: 400; }
+.charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; }
+@media (max-width: 560px) { .charts { grid-template-columns: minmax(0, 1fr); } }
+.chart { position: relative; }
+.chart .t { font-size: 11.5px; color: var(--ink2); margin: 2px 0; }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 6px; padding: 3px 6px; font-size: 11px; color: var(--ink); white-space: nowrap; display: none; z-index: 2; }
+.note { color: var(--muted); font-size: 11.5px; margin-top: 4px; }
+a { color: var(--up); }
+.stateline { color: var(--ink2); font-size: 12px; margin: 2px 0 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>End-to-end 5G flow, IIT Gandhinagar twin</h1>
+  <label>Scenario <select id="scen"></select></label>
+  <label>UE <select id="ue"></select></label>
+  <label>Show <select id="filt"><option value="ue">selected UE + network</option><option value="all">all UEs</option></select></label>
+  <button id="theme" title="Switch light / dark">◐</button>
+</header>
+<div class="bar">
+  <button id="prev" title="Previous message">⏮</button>
+  <button id="play" title="Play / pause">▶</button>
+  <button id="next" title="Next message">⏭</button>
+  <label>Speed <select id="speed"></select></label>
+  <input id="time" type="range" min="0" max="1000" step="0.5" value="0" aria-label="Time">
+  <span id="tlabel">0.0 ms</span>
+</div>
+<main>
+  <section class="card">
+    <h2>Topology <span class="sub">messages move along the interfaces in simulated time</span></h2>
+    <div class="legend"><span><i class="sw" style="background:var(--cp)"></i>control plane</span>
+      <span><i class="sw" style="background:var(--up)"></i>user plane</span>
+      <span><i class="sw" style="background:var(--muted)"></i>radio / fronthaul (both)</span></div>
+    <svg id="topo" viewBox="0 0 960 500" role="img" aria-label="Network topology"></svg>
+    <div id="log" aria-label="Recent messages"></div>
+  </section>
+  <section class="card">
+    <h2>Sequence diagram
+      <select id="proc" aria-label="Procedure"></select>
+      <button id="sprev" title="Previous step">◀</button><button id="splay" title="Play / pause steps">▶</button>
+      <button id="snext" title="Next step">▶|</button><span class="sub" id="sstep"></span></h2>
+    <div id="seqwrap"><svg id="seq"></svg></div>
+    <div id="detail"></div>
+  </section>
+  <section class="card">
+    <h2>Campus map <span class="sub" id="maplink"></span></h2>
+    <svg id="map" role="img" aria-label="Campus map with sites and UEs"></svg>
+    <div class="note">Grey: OpenStreetMap buildings. Triangles: gNB sites with sector directions. Dots: UEs; the selected UE is ringed,
+      its serving site joined by a line. Click a UE to select it.</div>
+  </section>
+  <section class="card">
+    <h2>KPIs of the selected UE <span class="sub">from the radio twin and the packet simulation</span></h2>
+    <div class="stateline" id="state"></div>
+    <div class="tiles" id="tiles"></div>
+    <div class="charts" id="charts"></div>
+    <div class="note">RSRP and SINR come from the ray-traced twin (serving cell, scheduler's SINR); throughput is what the UE received
+      per 20 ms; latency is the mean server → UE delay of those packets.</div>
+  </section>
+</main>
+<script>
+const DATA = /*__DATA__*/null;
+const $ = id => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+function S(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e); return e; }
+function txt(e, s) { e.textContent = s; return e; }
+const CP = new Set(["F1-C", "E1", "N2", "N4", "SBI", "Xn-C"]), UP = new Set(["F1-U", "N3", "N6", "Xn-U"]);
+const plane = i => CP.has(i) ? "var(--cp)" : UP.has(i) ? "var(--up)" : "var(--muted)";
+const KIND_ORDER = ["UE", "RU", "DU", "CU-CP", "CU-UP", "AMF", "AUSF", "UDM", "PCF", "NRF", "SMF", "UPF", "DN"];
+const fmt = (v, d = 1) => v == null || Number.isNaN(v) ? "–" : (+v).toFixed(d);
+
+// ------------------------------------------------------------------ state
+const P = new URLSearchParams(location.search);
+const st = { sc: null, ue: null, t: 0, playing: false, speed: 20, filt: "ue", inst: null, step: 0, splay: false };
+let SC, MSG, KPI, INST, POS, last = performance.now();
+
+function scenarioNames() { return Object.keys(DATA.scenarios); }
+function loadScenario(name) {
+  SC = DATA.scenarios[name]; st.sc = name;
+  const s = SC.strings;
+  MSG = SC.msgs.map(m => ({ t0: m[0], t1: m[1], src: s[m[2]], dst: s[m[3]], iface: s[m[4]], proc: s[m[5]], msg: s[m[6]],
+                            ue: s[m[7]], det: m[8], inst: s[m[9]] }));
+  KPI = SC.kpi;
+  INST = {};
+  MSG.forEach((m, i) => { if (m.inst) (INST[m.inst] = INST[m.inst] || []).push(i); });
+  const ues = Object.keys(KPI).length ? Object.keys(KPI) : [...new Set(MSG.map(m => m.ue).filter(Boolean))];
+  ues.sort();
+  $("ue").innerHTML = ues.map(u => `<option value="${u}">${u}${SC.meta.walkers && SC.meta.walkers[u] ? " (walk " + SC.meta.walkers[u] + ")" : ""}</option>`).join("");
+  const wantUE = P.get("ue") && ues.includes(P.get("ue")) ? P.get("ue") :
+                 (SC.meta.walkers && Object.keys(SC.meta.walkers)[1]) || ues[0];
+  $("ue").value = wantUE; st.ue = wantUE;
+  $("time").max = SC.meta.duration; $("time").step = SC.meta.duration > 20000 ? 5 : 0.5;
+  const sp = { attach: 20, mobility: 2000, siteoff: 200 }[name] || 50;
+  $("speed").innerHTML = [1, 5, 20, 50, 100, 200, 500, 2000, 10000].map(v => `<option value="${v}">${v} ms/s</option>`).join("");
+  $("speed").value = st.speed = sp;
+  layout(); drawMapStatic(); pickProcList(); setT(0);
+}
+function ueName() { return st.ue; }
+
+// ------------------------------------------------------------------ topology
+function layout() {
+  POS = {};
+  const g = SC.meta.gnbs || {}, sites = Object.keys(g), siteY = {};
+  sites.forEach((s, i) => siteY[s] = 85 + i * 150);
+  for (const [n, k] of Object.entries(SC.meta.elements)) {
+    const site = n.split("-").pop()[0];
+    if (k === "RU") { const rus = g[site].filter(x => x.startsWith("RU-")); POS[n] = [175, siteY[site] + (rus.indexOf(n) - 1) * 42]; }
+    else if (k === "DU") POS[n] = [305, siteY[site]];
+    else if (k === "CU-CP") POS[n] = [440, siteY[site] - 28];
+    else if (k === "CU-UP") POS[n] = [440, siteY[site] + 28];
+  }
+  Object.assign(POS, { AMF: [615, 85], SMF: [615, 235], NRF: [790, 35], AUSF: [790, 95], UDM: [790, 155], PCF: [790, 215],
+                       "UPF-EDGE": [640, 365], "UPF-CENTRAL": [640, 445], UPF: [640, 400], DN: [890, 405] });
+  POS["__others"] = [45, 470];
+  const svg = $("topo"); svg.innerHTML = "";
+  for (const s of sites) S("rect", { x: 140, y: siteY[s] - 70, width: 345, height: 140, rx: 10, fill: "none",
+                                     stroke: "var(--grid)", "stroke-dasharray": "3 4" }, svg);
+  for (const s of sites) txt(S("text", { x: 148, y: siteY[s] - 56, "font-size": 11, fill: "var(--muted)" }, svg), `gNB site ${s}`);
+  txt(S("text", { x: 690, y: 300, "font-size": 11, fill: "var(--muted)" }, svg), "5G core");
+  const pairs = new Map();
+  for (const m of MSG) { if (!POS[m.src] || !POS[m.dst]) continue; const k = [m.src, m.dst].sort().join("|") + "|" + m.iface;
+                         if (!pairs.has(k)) pairs.set(k, m); }
+  const gl = S("g", {}, svg);
+  const labelled = new Set();
+  for (const m of pairs.values()) {
+    const [a, b] = [POS[m.src], POS[m.dst]];
+    S("line", { x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: plane(m.iface), "stroke-opacity": 0.35, "stroke-width": 1.5 }, gl);
+    const key = m.iface + Math.round((a[0] + b[0]) / 40) + Math.round((a[1] + b[1]) / 40);
+    if (!labelled.has(key) && m.iface !== "fronthaul") { labelled.add(key);
+      txt(S("text", { x: (a[0] + b[0]) / 2 + 3, y: (a[1] + b[1]) / 2 - 3, "font-size": 9.5, fill: "var(--muted)" }, gl), m.iface); }
+  }
+  S("g", { id: "uelink" }, svg);
+  const gn = S("g", {}, svg);
+  for (const [n, p] of Object.entries(POS)) {
+    if (n === "__others" || n === "UPF" && !SC.meta.elements.UPF) continue;
+    if (!SC.meta.elements[n] && n !== "__others") continue;
+    const kind = SC.meta.elements[n];
+    const w = kind === "RU" ? 62 : 74;
+    S("rect", { x: p[0] - w / 2, y: p[1] - 11, width: w, height: 22, rx: 6, fill: "var(--surface)", stroke: "var(--axis)", id: "n-" + n }, gn);
+    txt(S("text", { x: p[0], y: p[1] + 4, "font-size": 10.5, "text-anchor": "middle", fill: "var(--ink)" }, gn),
+        n.replace("UPF-CENTRAL", "UPF-CENT."));
+  }
+  const ue = S("g", { id: "uenode" }, svg);
+  S("circle", { cx: 0, cy: 0, r: 13, fill: "var(--sel)" }, ue);
+  txt(S("text", { x: 0, y: 4, "font-size": 9.5, "text-anchor": "middle", fill: "#fff", id: "uetext" }, ue), "UE");
+  const oth = S("g", { id: "others" }, svg);
+  S("circle", { cx: 45, cy: 470, r: 10, fill: "none", stroke: "var(--muted)", "stroke-dasharray": "2 2" }, oth);
+  txt(S("text", { x: 60, y: 474, "font-size": 10, fill: "var(--muted)" }, oth), "other UEs");
+  S("g", { id: "dots" }, svg);
+}
+function kpiAt(ue, t) {
+  const a = KPI[ue]; if (!a || !a.length) return null;
+  let lo = 0, hi = a.length - 1; if (t < a[0][0]) return a[0];
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (a[mid][0] <= t) lo = mid; else hi = mid - 1; }
+  return a[lo];
+}
+function currentRU(ue, t) {
+  // newest of: the 20 ms KPI sample, or the UE's latest air-interface message (catches handovers / re-selection)
+  const k = kpiAt(ue, t);
+  for (let i = upper(t) - 1, n = 0; i >= 0 && n < 4000; i--, n++) {
+    const m = MSG[i]; if (k && m.t0 < k[0]) break;
+    if (m.iface === "Uu" && m.ue === ue) return m.src === ue ? m.dst : m.src; }
+  return k && k[1] ? k[1] : null;
+}
+function upper(t) { let lo = 0, hi = MSG.length; while (lo < hi) { const mid = (lo + hi) >> 1; if (MSG[mid].t0 <= t) lo = mid + 1; else hi = mid; } return lo; }
+function visible(m) { return st.filt === "all" || !m.ue || m.ue === st.ue; }
+function uePos(m, end) { const n = end === "src" ? m.src : m.dst;
+  if (POS[n]) return POS[n];
+  if (n === st.ue) return uePt(); return POS.__others; }
+function uePt() { const ru = currentRU(st.ue, st.t); const p = ru && POS[ru]; return [45, p ? p[1] : 250]; }
+function drawTopo() {
+  const up = uePt(), node = $("uenode");
+  node.setAttribute("transform", `translate(${up[0]},${up[1]})`); $("uetext").textContent = st.ue.replace("UE", "");
+  const ru = currentRU(st.ue, st.t), ul = $("uelink"); ul.innerHTML = "";
+  if (ru && POS[ru]) S("line", { x1: up[0], y1: up[1], x2: POS[ru][0] - 31, y2: POS[ru][1], stroke: "var(--sel)", "stroke-width": 2 }, ul);
+  const off = SC.meta.site_off;
+  document.querySelectorAll("#topo rect[id^='n-']").forEach(r => {
+    const n = r.id.slice(2), dead = off && st.t >= off.t_ms && (n.endsWith("-" + off.site) || n.startsWith("RU-" + off.site));
+    r.setAttribute("stroke", dead ? "var(--off)" : "var(--axis)"); r.setAttribute("stroke-dasharray", dead ? "3 2" : ""); });
+  const g = $("dots"); g.innerHTML = "";
+  const minVis = st.speed * 0.3, hi = upper(st.t);
+  let shown = 0;
+  for (let i = hi - 1; i >= 0 && shown < 160; i--) {
+    const m = MSG[i]; if (st.t - m.t0 > Math.max(60, minVis + 20)) break;
+    if (!visible(m)) continue;
+    const t1 = Math.max(m.t1, m.t0 + minVis); if (st.t > t1) continue;
+    const a = uePos(m, "src"), b = uePos(m, "dst"), f = Math.min(1, (st.t - m.t0) / (t1 - m.t0 || 1));
+    const c = S("circle", { cx: a[0] + (b[0] - a[0]) * f, cy: a[1] + (b[1] - a[1]) * f, r: 4.5, fill: plane(m.iface),
+                            stroke: "var(--surface)", "stroke-width": 2 }, g);
+    txt(S("title", {}, c), `${m.msg} (${m.iface})`); shown++;
+  }
+  const L = [];
+  for (let i = hi - 1; i >= 0 && L.length < 12; i--) { const m = MSG[i]; if (!visible(m)) continue;
+    const d = JSON.parse(SC.details[m.det]), x = d.nas_sm || d.nas || d.rrc || d.uu || (d.bytes != null ? d.bytes + " B" : "");
+    L.push(`<div>${m.t0.toFixed(2)} ms  ${m.src} → ${m.dst}  <b>${m.iface}</b>  ${m.msg}${x ? "  [" + x + "]" : ""}</div>`); }
+  $("log").innerHTML = L.join("");
+}
+
+// ------------------------------------------------------------------ sequence diagram
+function instLabel(k) { const [ue, proc, ho] = k.split("|"); const i0 = INST[k][0];
+  return `${MSG[i0].t0.toFixed(0)} ms · ${proc}${ho ? " #" + ho : ""}${ue === "network" ? " (network)" : ""}`; }
+function pickProcList() {
+  const keys = Object.keys(INST).filter(k => k.startsWith(st.ue + "|") || k.startsWith("network|"))
+                                  .sort((a, b) => MSG[INST[a][0]].t0 - MSG[INST[b][0]].t0);
+  $("proc").innerHTML = keys.map(k => `<option value="${k}">${instLabel(k)}</option>`).join("");
+  const want = P.get("proc"), tq = P.get("t") != null ? +P.get("t") : null;
+  const atT = tq == null ? null : [...keys].reverse().find(k => k.startsWith(st.ue + "|") && MSG[INST[k][0]].t0 <= tq + 1);
+  st.inst = want && keys.includes(want) ? want : atT || keys.find(k => k.includes("|Registration|")) || keys[0];
+  $("proc").value = st.inst; st.step = 0; drawSeq();
+}
+function drawSeq() {
+  const svg = $("seq"); svg.innerHTML = ""; if (!st.inst) return;
+  const idx = INST[st.inst], ms = idx.map(i => MSG[i]);
+  const els = [...new Set(ms.flatMap(m => [m.src, m.dst]))].sort((a, b) => {
+    const ka = KIND_ORDER.indexOf(SC.meta.elements[a] || "UE"), kb = KIND_ORDER.indexOf(SC.meta.elements[b] || "UE");
+    return ka - kb || a.localeCompare(b); });
+  const avail = Math.max(600, $("seqwrap").clientWidth - 20), gap = Math.max(82, Math.min(110, (avail - 120) / Math.max(1, els.length - 1)));
+  const W = Math.max(avail, 140 + (els.length - 1) * gap), H = 48 + ms.length * 26 + 10, X = {};
+  els.forEach((e, i) => X[e] = 100 + i * gap);
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.style.width = W + "px"; svg.style.minWidth = "100%";
+  for (const e of els) { S("line", { x1: X[e], y1: 30, x2: X[e], y2: H - 4, stroke: "var(--grid)" }, svg);
+    S("rect", { x: X[e] - 44, y: 6, width: 88, height: 20, rx: 5, fill: "var(--surface)", stroke: "var(--axis)" }, svg);
+    txt(S("text", { x: X[e], y: 20, "font-size": 10.5, "text-anchor": "middle", fill: "var(--ink)" }, svg), e); }
+  ms.forEach((m, j) => {
+    const y = 50 + j * 26, cur = j === st.step, past = j < st.step, g = S("g", { style: "cursor:pointer" }, svg);
+    const op = cur ? 1 : past ? 0.85 : 0.35, col = cur ? "var(--sel)" : plane(m.iface);
+    S("rect", { x: 0, y: y - 15, width: W, height: 26, fill: cur ? "var(--grid)" : "transparent" }, g);
+    txt(S("text", { x: 6, y: y + 3, "font-size": 9.5, fill: "var(--muted)" }, g), m.t0.toFixed(1));
+    const x1 = X[m.src], x2 = X[m.dst], dir = Math.sign(x2 - x1) || 1;
+    S("line", { x1, y1: y, x2: x2 - dir * 6, y2: y, stroke: col, "stroke-width": cur ? 2.5 : 1.6, opacity: op }, g);
+    S("path", { d: `M${x2},${y} l${-dir * 8},-4 l0,8 z`, fill: col, opacity: op }, g);
+    const d = JSON.parse(SC.details[m.det]), extra = d.nas_sm || d.nas || d.rrc || "";
+    txt(S("text", { x: (x1 + x2) / 2, y: y - 4, "font-size": 10, "text-anchor": "middle", fill: "var(--ink)", opacity: op,
+                    "font-weight": cur ? 700 : 400 }, g), m.msg + (extra && extra !== m.msg ? `  [${extra}]` : ""));
+    g.addEventListener("click", () => { st.step = j; st.splay = false; syncFromStep(); });
+  });
+  const m = ms[st.step];
+  $("sstep").textContent = `step ${st.step + 1} / ${ms.length}`;
+  $("detail").textContent = `${m.t0.toFixed(3)} → ${m.t1.toFixed(3)} ms   ${m.src} → ${m.dst}   ${m.iface}   ${m.proc}\n${m.msg}\n` +
+    JSON.stringify(JSON.parse(SC.details[m.det]), null, 2);
+  const wrap = $("seqwrap"), y = 50 + st.step * 26;
+  if (y < wrap.scrollTop + 30 || y > wrap.scrollTop + wrap.clientHeight - 30) wrap.scrollTop = y - wrap.clientHeight / 2;
+}
+function syncFromStep() { const m = MSG[INST[st.inst][st.step]]; setT(m.t0 + Math.min(0.001, (m.t1 - m.t0) / 2), true); drawSeq(); }
+
+// ------------------------------------------------------------------ map
+let MAPG;
+function mx(x) { return x; } function my(y) { return -y; }
+function drawMapStatic() {
+  const svg = $("map"), h = DATA.map.half; svg.innerHTML = "";
+  svg.setAttribute("viewBox", `${-h} ${-h} ${2 * h} ${2 * h}`);
+  S("rect", { x: -h, y: -h, width: 2 * h, height: 2 * h, fill: "var(--surface)" }, svg);
+  for (let v = -600; v <= 600; v += 200) { S("line", { x1: v, y1: -h, x2: v, y2: h, stroke: "var(--grid)", "stroke-width": 1 }, svg);
+    S("line", { x1: -h, y1: v, x2: h, y2: v, stroke: "var(--grid)", "stroke-width": 1 }, svg); }
+  for (const b of DATA.map.buildings) { const p = S("polygon", { points: b.xy.map(q => `${mx(q[0])},${my(q[1])}`).join(" "),
+    fill: "var(--bld)", stroke: "var(--axis)", "stroke-width": 0.8 }, svg); if (b.n) txt(S("title", {}, p), `${b.n} (${b.h} m)`); }
+  for (const s of DATA.map.sites) {
+    const g = S("g", { id: "site-" + s.name }, svg), [x, y] = s.xy;
+    for (const a of s.az) { const r = a * Math.PI / 180;
+      S("line", { x1: x, y1: -y, x2: x + 55 * Math.cos(r), y2: -(y + 55 * Math.sin(r)), stroke: "var(--ink2)", "stroke-width": 3 }, g); }
+    S("path", { d: `M${x},${-y - 16} l14,24 l-28,0 z`, fill: "var(--ink)" }, g);
+    txt(S("text", { x: x + 18, y: -y + 6, "font-size": 26, fill: "var(--ink)", "font-weight": 700 }, g), s.name);
+  }
+  MAPG = S("g", {}, svg);
+  $("maplink").innerHTML = DATA.has3d ? `<a href="twin_3d.html" target="_blank">open the 3D twin</a> (needs internet for its 3D library)` : "";
+}
+function siteOfRU(ru) { return ru ? ru.replace("RU-", "")[0] : null; }
+function drawMap() {
+  MAPG.innerHTML = "";
+  const off = SC.meta.site_off, sites = Object.fromEntries(DATA.map.sites.map(s => [s.name, s.xy]));
+  DATA.map.sites.forEach(s => { const dead = off && st.t >= off.t_ms && off.site === s.name;
+    document.querySelectorAll(`#site-${s.name} path`).forEach(p => p.setAttribute("fill", dead ? "var(--off)" : "var(--ink)")); });
+  const sel = KPI[st.ue];
+  if (sel && SC.meta.walkers && SC.meta.walkers[st.ue])
+    S("polyline", { points: sel.map(r => `${r[2]},${-r[3]}`).join(" "), fill: "none", stroke: "var(--sel)", "stroke-width": 3,
+                    "stroke-dasharray": "8 6", opacity: 0.6 }, MAPG);
+  for (const ue of Object.keys(KPI)) {
+    const k = kpiAt(ue, st.t); if (!k) continue;
+    const isSel = ue === st.ue;
+    const ru = isSel ? currentRU(ue, st.t) : k[1];
+    if (isSel && ru && sites[siteOfRU(ru)]) { const s = sites[siteOfRU(ru)];
+      S("line", { x1: k[2], y1: -k[3], x2: s[0], y2: -s[1], stroke: "var(--sel)", "stroke-width": 3 }, MAPG); }
+    const c = S("circle", { cx: k[2], cy: -k[3], r: isSel ? 15 : 8, fill: isSel ? "var(--sel)" : "var(--up)",
+                            stroke: "var(--surface)", "stroke-width": isSel ? 5 : 3, style: "cursor:pointer" }, MAPG);
+    if (isSel) S("circle", { cx: k[2], cy: -k[3], r: 24, fill: "none", stroke: "var(--sel)", "stroke-width": 3 }, MAPG);
+    txt(S("title", {}, c), `${ue} on ${ru || "–"}`);
+    c.addEventListener("click", () => selectUE(ue));
+  }
+}
+
+// ------------------------------------------------------------------ KPI charts
+const CH = [["RSRP", 4, "dBm", 1], ["SINR", 5, "dB", 1], ["Throughput", 6, "Mbps", 2], ["Latency", 7, "ms", 1]];
+function drawKpis() {
+  const rows = KPI[st.ue] || [], k = kpiAt(st.ue, st.t);
+  $("state").textContent = k ? `${st.ue} · serving ${currentRU(st.ue, st.t) || "none"} · ${k[9] || ""}` : st.ue;
+  $("tiles").innerHTML = CH.map(([n, i, u, d]) => `<div class="tile"><div class="k">${n}</div><div class="v">${k ? fmt(k[i], d) : "–"}
+      <span class="u">${u}</span></div></div>`).join("");
+  const host = $("charts");
+  if (host.dataset.ue !== st.ue + st.sc) { host.dataset.ue = st.ue + st.sc; host.innerHTML = "";
+    for (const [n, i, u] of CH) host.appendChild(chart(n, u, rows.map(r => [r[0], r[i]]))); }
+  host.querySelectorAll("line.cursor").forEach(l => { const X = l.__x; l.setAttribute("x1", X(st.t)); l.setAttribute("x2", X(st.t)); });
+}
+function chart(name, unit, pts) {
+  const W = 300, H = 120, L = 40, R = 8, T = 6, B = 18, wrap = document.createElement("div"); wrap.className = "chart";
+  wrap.innerHTML = `<div class="t">${name} [${unit}]</div>`;
+  const svg = S("svg", { viewBox: `0 0 ${W} ${H}` }); wrap.appendChild(svg);
+  const tip = document.createElement("div"); tip.className = "tip"; wrap.appendChild(tip);
+  const v = pts.filter(p => p[1] != null && Number.isFinite(p[1]));
+  const t0 = 0, t1 = SC.meta.duration;
+  let lo = Math.min(...v.map(p => p[1])), hi = Math.max(...v.map(p => p[1]));
+  if (!v.length) { lo = 0; hi = 1; } if (hi - lo < 1e-6) { hi += 1; lo -= 1; }
+  const nonneg = v.every(p => p[1] >= 0), pad = (hi - lo) * 0.08; lo -= pad; hi += pad; if (nonneg) lo = Math.max(0, lo);
+  const X = t => L + (t - t0) / (t1 - t0) * (W - L - R), Y = y => T + (1 - (y - lo) / (hi - lo)) * (H - T - B);
+  for (const f of [0, 0.5, 1]) { const y = lo + f * (hi - lo);
+    S("line", { x1: L, y1: Y(y), x2: W - R, y2: Y(y), stroke: "var(--grid)" }, svg);
+    txt(S("text", { x: L - 4, y: Y(y) + 3, "font-size": 9, "text-anchor": "end", fill: "var(--muted)" }, svg), y.toFixed(Math.abs(hi - lo) < 10 ? 1 : 0)); }
+  S("line", { x1: L, y1: H - B, x2: W - R, y2: H - B, stroke: "var(--axis)" }, svg);
+  txt(S("text", { x: L, y: H - 4, "font-size": 9, fill: "var(--muted)" }, svg), "0 s");
+  txt(S("text", { x: W - R, y: H - 4, "font-size": 9, "text-anchor": "end", fill: "var(--muted)" }, svg), (t1 / 1000).toFixed(1) + " s");
+  let d = "", pen = false;
+  for (const p of pts) { if (p[1] == null || !Number.isFinite(p[1])) { pen = false; continue; }
+    d += (pen ? "L" : "M") + X(p[0]).toFixed(1) + "," + Y(p[1]).toFixed(1); pen = true; }
+  S("path", { d, fill: "none", stroke: "var(--up)", "stroke-width": 2, "stroke-linejoin": "round" }, svg);
+  const cur = S("line", { class: "cursor", y1: T, y2: H - B, stroke: "var(--sel)", "stroke-width": 1.5 }, svg); cur.__x = X;
+  const cross = S("line", { y1: T, y2: H - B, stroke: "var(--ink2)", "stroke-dasharray": "2 2", visibility: "hidden" }, svg);
+  const dot = S("circle", { r: 4, fill: "var(--up)", stroke: "var(--surface)", "stroke-width": 2, visibility: "hidden" }, svg);
+  svg.addEventListener("mousemove", ev => {
+    const r = svg.getBoundingClientRect(), t = t0 + ((ev.clientX - r.left) / r.width * W - L) / (W - L - R) * (t1 - t0);
+    let best = null; for (const p of v) if (!best || Math.abs(p[0] - t) < Math.abs(best[0] - t)) best = p;
+    if (!best) return;
+    cross.setAttribute("x1", X(best[0])); cross.setAttribute("x2", X(best[0])); cross.setAttribute("visibility", "visible");
+    dot.setAttribute("cx", X(best[0])); dot.setAttribute("cy", Y(best[1])); dot.setAttribute("visibility", "visible");
+    tip.style.display = "block"; tip.textContent = `${(best[0] / 1000).toFixed(2)} s · ${best[1].toFixed(2)} ${unit}`;
+    tip.style.left = Math.min(r.width - 110, X(best[0]) / W * r.width + 8) + "px"; tip.style.top = "18px"; });
+  svg.addEventListener("mouseleave", () => { tip.style.display = "none"; cross.setAttribute("visibility", "hidden");
+    dot.setAttribute("visibility", "hidden"); });
+  svg.addEventListener("click", ev => { const r = svg.getBoundingClientRect();
+    setT(Math.max(0, t0 + ((ev.clientX - r.left) / r.width * W - L) / (W - L - R) * (t1 - t0))); });
+  return wrap;
+}
+
+// ------------------------------------------------------------------ time + controls
+function setT(t, fromStep) {
+  st.t = Math.max(0, Math.min(SC.meta.duration, t));
+  $("time").value = st.t; $("tlabel").textContent = st.t >= 10000 ? (st.t / 1000).toFixed(2) + " s" : st.t.toFixed(1) + " ms";
+  if (!fromStep && st.inst) { const idx = INST[st.inst]; let j = 0;
+    while (j + 1 < idx.length && MSG[idx[j + 1]].t0 <= st.t) j++;
+    if (j !== st.step && MSG[idx[0]].t0 <= st.t) { st.step = j; drawSeq(); } }
+  drawTopo(); drawMap(); drawKpis();
+}
+function stepMsg(dir) {
+  const hi = upper(st.t);
+  if (dir > 0) { for (let i = hi; i < MSG.length; i++) if (visible(MSG[i])) return setT(MSG[i].t0 + 0.001); }
+  else { for (let i = hi - 2; i >= 0; i--) if (visible(MSG[i])) return setT(MSG[i].t0 + 0.001); }
+}
+function selectUE(ue) { st.ue = ue; $("ue").value = ue;
+  pickProcList(); $("charts").dataset.ue = ""; setT(st.t); }
+let acc = 0;
+function tick(now) {
+  const dt = (now - last) / 1000; last = now;
+  if (st.playing) { const t = st.t + dt * st.speed; if (t >= SC.meta.duration) { st.playing = false; $("play").textContent = "▶"; }
+    setT(t); }
+  if (st.splay) { acc += dt; if (acc > 0.7) { acc = 0; const n = INST[st.inst].length;
+    if (st.step + 1 < n) { st.step++; syncFromStep(); } else { st.splay = false; $("splay").textContent = "▶"; } } }
+  requestAnimationFrame(tick);
+}
+function init() {
+  if (P.get("theme")) document.documentElement.dataset.theme = P.get("theme");
+  if (!DATA) { document.body.innerHTML = "<p style='padding:16px'>No data embedded. Run tools/build_e2e_viewer.py.</p>"; return; }
+  $("scen").innerHTML = scenarioNames().map(n => `<option value="${n}">${DATA.scenarios[n].label}</option>`).join("");
+  $("scen").onchange = () => { st.playing = false; $("play").textContent = "▶"; P.delete("ue"); P.delete("proc"); loadScenario($("scen").value); };
+  $("ue").onchange = () => selectUE($("ue").value);
+  $("filt").onchange = () => { st.filt = $("filt").value; setT(st.t); };
+  $("speed").onchange = () => st.speed = +$("speed").value;
+  $("time").oninput = () => setT(+$("time").value);
+  $("play").onclick = () => { st.playing = !st.playing; $("play").textContent = st.playing ? "⏸" : "▶"; };
+  $("prev").onclick = () => stepMsg(-1); $("next").onclick = () => stepMsg(1);
+  $("proc").onchange = () => { st.inst = $("proc").value; st.step = 0; syncFromStep(); };
+  $("sprev").onclick = () => { st.splay = false; if (st.step > 0) { st.step--; syncFromStep(); } };
+  $("snext").onclick = () => { st.splay = false; if (st.step + 1 < INST[st.inst].length) { st.step++; syncFromStep(); } };
+  $("splay").onclick = () => { st.splay = !st.splay; $("splay").textContent = st.splay ? "⏸" : "▶"; };
+  $("theme").onclick = () => { const r = document.documentElement, dark = getComputedStyle(r).getPropertyValue("--page").trim() === "#0d0d0d";
+    r.dataset.theme = dark ? "light" : "dark"; $("charts").dataset.ue = ""; setT(st.t); };
+  document.addEventListener("keydown", e => { if (e.target.tagName === "SELECT") return;
+    if (e.key === " ") { e.preventDefault(); $("play").click(); } if (e.key === "ArrowRight") stepMsg(1); if (e.key === "ArrowLeft") stepMsg(-1); });
+  const sc = P.get("scenario") && DATA.scenarios[P.get("scenario")] ? P.get("scenario") : scenarioNames()[0];
+  $("scen").value = sc; loadScenario(sc);
+  if (P.get("step") && st.inst) { st.step = Math.min(+P.get("step"), INST[st.inst].length - 1); syncFromStep(); }
+  else if (P.get("t")) setT(+P.get("t"));
+  requestAnimationFrame(tick);
+}
+window.addEventListener("error", e => { document.title = "ERR " + e.message; const d = document.createElement("pre");
+  d.id = "jserr"; d.textContent = e.message + " @" + e.lineno; document.body.prepend(d); });
+init();
+</script>
+</body>
+</html>

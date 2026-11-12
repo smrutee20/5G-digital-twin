@@ -1,0 +1,20 @@
+trajectory,distance_m,strategy,from_ru,to_ru,los_to_old,los_to_new,rsrp_gain_db
+1,4.0,T3 twin,C120,C240,False,False,4.7
+1,34.0,T3 twin,C240,C120,False,False,10.7
+1,48.0,T3 twin,C120,C240,False,False,3.9
+1,98.0,T3 twin,C240,A240,False,False,12.9
+1,112.0,B1 nearest,C240,C120,False,False,-10.0
+1,120.0,T3 twin,A240,C120,False,False,12.4
+2,8.0,T3 twin,C120,A240,False,False,35.6
+2,48.0,T3 twin,A240,C0,False,False,31.3
+2,64.0,T3 twin,C0,A0,False,False,8.6
+2,96.0,T3 twin,A0,C0,False,False,15.5
+2,126.0,T3 twin,C0,B0,False,False,4.3
+2,130.0,T3 twin,B0,C0,False,False,17.6
+3,44.0,T3 twin,B240,C240,False,False,4.9
+3,58.0,T3 twin,C240,B240,False,False,7.0
+3,80.0,T3 twin,B240,A240,False,False,9.8
+3,86.0,B1 nearest,C240,C120,False,False,2.2
+3,104.0,T3 twin,A240,C240,False,False,5.8
+3,112.0,T3 twin,C240,C120,False,False,24.1
+3,122.0,T3 twin,C120,A240,False,False,15.3

@@ -1,0 +1,7 @@
+ho_id,ue,walk,type,source,target,t_command_ms,t_complete_ms,ue_interruption_ms,dl_gap_ms,path_switch_ack_after_ms,end_marker_after_ms,packets_forwarded_xn,max_latency_around_ho_ms,rsrp_before_dbm,rsrp_after_dbm,capacity_before_mbps,capacity_after_mbps,thr_before_mbps,thr_after_mbps,latency_before_ms,latency_after_ms
+1,UE28,2,Handover (Xn),RU-B225,RU-A180,10086.0,10103.5,17.5,41.0,29.9,27.1,249,1144.8,-124.0,-118.2,2.8,6.0,2.78,6.01,642.66,1245.85
+2,UE28,2,Handover (Xn),RU-A180,RU-C173,30086.0,30103.5,17.5,39.0,29.9,27.1,524,6215.1,-119.0,-115.5,4.8,12.6,4.8,12.62,6099.38,5465.53
+3,UE28,2,Handover (Xn),RU-C173,RU-B225,41515.0,41533.5,18.5,32.5,30.9,28.1,1166,1347.3,-112.7,-99.6,1.0,34.6,1.0,20.19,862.61,423.87
+6,UE28,2,Handover (Xn),RU-B225,RU-C173,67229.0,67243.5,14.5,34.5,26.9,24.1,738,883.9,-99.5,-92.5,8.2,17.7,8.27,17.66,758.13,421.78
+4,UE29,3,Handover (Xn),RU-B105,RU-C53,47229.0,47243.5,14.5,34.5,26.9,24.1,999,1114.8,-99.9,-92.6,2.6,39.7,2.61,18.65,712.1,298.44
+5,UE29,3,Handover (Xn),RU-C53,RU-B105,58657.5,58673.5,16.0,26.0,28.4,25.6,234,272.6,-105.6,-98.9,8.6,19.4,8.64,11.52,171.05,33.5

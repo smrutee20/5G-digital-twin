@@ -1,0 +1,14 @@
+sweep,num_ues,num_rus,links,max_depth,rays_per_ru,diffraction,mode,runtime_s,scene_load_s,peak_memory_mb,backend
+UEs,25,9,225,3,300000,True,paths,1.4,0.0,754,llvm-cpu
+UEs,100,9,900,3,300000,True,paths,5.0,0.0,798,llvm-cpu
+UEs,300,9,2700,3,300000,True,paths,15.3,0.0,1202,llvm-cpu
+UEs,600,9,5400,3,300000,True,paths,31.1,0.0,1271,llvm-cpu
+rays per RU,100,9,900,3,100000,True,paths,1.9,0.0,778,llvm-cpu
+rays per RU,100,9,900,3,300000,True,paths,5.4,0.0,798,llvm-cpu
+rays per RU,100,9,900,3,1000000,True,paths,18.5,0.0,828,llvm-cpu
+max depth,100,9,900,1,300000,False,paths,3.0,0.0,427,llvm-cpu
+max depth,100,9,900,2,300000,False,paths,4.2,0.0,503,llvm-cpu
+max depth,100,9,900,3,300000,False,paths,4.8,0.0,586,llvm-cpu
+max depth,100,9,900,4,300000,False,paths,5.1,0.0,667,llvm-cpu
+diffraction on (vs depth-3 row above),100,9,900,3,300000,True,paths,6.2,0.0,798,llvm-cpu
+radio map 1300x1300 m @5 m,0,9,0,3,300000,True,map,6.2,0.0,222,llvm-cpu

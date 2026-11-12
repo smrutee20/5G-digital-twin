@@ -1,0 +1,9 @@
+twin,strategy,mean_thr_mbps,p5_thr_mbps,mean_sinr_db,outage_pct,best_server_agreement
+Oracle twin (= physical network),B1,23.35,0.04,1.44,20.22,1.0
+Oracle twin (= physical network),T3,56.78,17.18,16.38,0.0,1.0
+Twin + measurement sync (noisy positions),B1,23.51,0.04,1.56,20.22,0.9006666666666666
+Twin + measurement sync (noisy positions),T3,46.9,12.1,14.37,0.0,0.9006666666666666
+Twin at true UE positions,B1,23.35,0.04,1.44,20.22,0.752
+Twin at true UE positions,T3,36.99,8.91,13.48,0.44,0.752
+Twin at GPS positions (5 m error),B1,23.51,0.04,1.56,20.22,0.7446666666666667
+Twin at GPS positions (5 m error),T3,31.65,6.57,12.27,1.11,0.7446666666666667

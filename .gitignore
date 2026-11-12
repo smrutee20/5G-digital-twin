@@ -1,0 +1,21 @@
+# Python / OS
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Backups and archives
+*.zip
+
+# Ray-trace caches and channel pools (regenerate with run_all.py, ~45 min)
+data/
+*.npz
+*.pkl
+
+# Quick test runs
+*_quick/
+
+# Large end-to-end traces from e11 (data already embedded in e2e_viewer.html)
+results/*/e2e_trace_mobility.json
+results/*/e2e_kpis_mobility.json
+results/*/e2e_trace_siteoff.json

@@ -1,0 +1,7 @@
+{
+  "cpu": "arm",
+  "cores": 10,
+  "ram_gb": 17.2,
+  "python": "3.14.7",
+  "backend": "llvm-cpu"
+}

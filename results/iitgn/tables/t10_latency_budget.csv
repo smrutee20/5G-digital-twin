@@ -1,0 +1,19 @@
+component,key,mean_ms,p50_ms,p95_ms,strategy
+data network (N6),n6,5.0,5.0,5.0,B1
+core processing (UPF),core,0.05,0.05,0.05,B1
+backhaul (N3),backhaul,1.0,1.0,1.0,B1
+Xn-U forwarding (handover),xn,0.0,0.0,0.0,B1
+midhaul (F1-U),midhaul,0.5,0.5,0.5,B1
+"RAN processing (CU-UP, DU)",ran_proc,0.4,0.4,0.4,B1
+air: scheduling / queueing,du_queue,51.7488,0.5526,305.9101,B1
+fronthaul (RU-DU),fronthaul,0.15,0.15,0.15,B1
+air: TTI + HARQ,air,0.7239,0.5,2.5,B1
+data network (N6),n6,5.0,5.0,5.0,T3
+core processing (UPF),core,0.05,0.05,0.05,T3
+backhaul (N3),backhaul,1.0,1.0,1.0,T3
+Xn-U forwarding (handover),xn,0.0,0.0,0.0,T3
+midhaul (F1-U),midhaul,0.5,0.5,0.5,T3
+"RAN processing (CU-UP, DU)",ran_proc,0.4,0.4,0.4,T3
+air: scheduling / queueing,du_queue,0.5048,0.3791,1.3631,T3
+fronthaul (RU-DU),fronthaul,0.15,0.15,0.15,T3
+air: TTI + HARQ,air,0.7244,0.5,2.5,T3

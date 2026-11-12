@@ -1,0 +1,42 @@
+{
+  "handovers": {
+    "count": 6,
+    "by_type": {
+      "Handover (Xn)": 6
+    },
+    "ue_interruption_ms_mean": 16.42,
+    "dl_gap_ms_mean": 34.58,
+    "dl_gap_ms_max": 41.0,
+    "path_switch_ack_after_ms_mean": 28.82,
+    "packets_lost_by_handover": 0,
+    "packets_tail_dropped_capacity_below_demand": 5211
+  },
+  "site_off": {
+    "site": "B",
+    "t_ms": 1500,
+    "rlf_ms": 400,
+    "affected_ues": 9,
+    "dl_interruption_ms_mean": 469.8,
+    "dl_interruption_ms_max": 471.5,
+    "bytes_lost_towards_site": 5021800,
+    "bytes_lost_in_du": 91000,
+    "affected_capacity_mbps_before_after": [
+      65.1,
+      39.2
+    ],
+    "others_capacity_mbps_before_after": [
+      43.6,
+      55.6
+    ]
+  },
+  "checks": {
+    "mobility: every message uses a legal interface": true,
+    "mobility: every handover command was followed by a completed RACH on the target": true,
+    "mobility: every Xn handover got a Path Switch Ack and an End Marker": true,
+    "mobility: no packet lost by a handover (0 lost; 5211 tail-dropped earlier when the walker's capacity was below its demand)": true,
+    "site off: every message uses a legal interface": true,
+    "site off: every affected UE resumed its session through another site": true,
+    "site off: the SMF re-routed every affected session at the UPF (N4 modification)": true,
+    "site off: every affected UE receives data again": true
+  }
+}

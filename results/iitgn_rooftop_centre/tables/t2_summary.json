@@ -1,0 +1,13 @@
+{
+  "links": 14850,
+  "los_fraction": 0.5727272727272728,
+  "rt_path_found_fraction": 0.9940740740740741,
+  "best_server_los_fraction": 0.7751515151515151,
+  "best_server_not_nearest_site_pct": 46.54545454545455,
+  "median_rsrp_dbm": -78.8,
+  "median_sinr_db": 4.4,
+  "median_ds_los_ns": 47.78873825073242,
+  "median_ds_nlos_ns": 86.29194641113281,
+  "median_paths_per_link": 19.0,
+  "rsrp_range_p5_p95_at_150_200m_db": 45.731346130371094
+}

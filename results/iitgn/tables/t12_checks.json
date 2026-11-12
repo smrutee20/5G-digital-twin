@@ -1,0 +1,10 @@
+{
+  "B1: every UE's DU queue stays backlogged (line rate > max capacity 321 Mbps)": true,
+  "B1: e2e delivered = scheduler capacity per UE within 1 % (worst 0.42 %)": true,
+  "B1: mean e2e throughput = e03 mean within 1 % (27.83 vs 27.83 Mbps)": true,
+  "B1: e2e = e03 per UE within 5 % (worst 0.42 %; scheduler random draws per epoch)": true,
+  "T3: every UE's DU queue stays backlogged (line rate > max capacity 270 Mbps)": true,
+  "T3: e2e delivered = scheduler capacity per UE within 1 % (worst 0.09 %)": true,
+  "T3: mean e2e throughput = e03 mean within 1 % (50.03 vs 50.06 Mbps)": true,
+  "T3: e2e = e03 per UE within 5 % (worst 2.70 %; scheduler random draws per epoch)": true
+}

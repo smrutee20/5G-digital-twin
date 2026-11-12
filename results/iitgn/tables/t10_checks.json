@@ -1,0 +1,10 @@
+{
+  "B1 and T3 use the same UEs (same twin positions)": true,
+  "B1 and T3 see the same packet streams (same seeds and start epochs)": true,
+  "B1: each UE's delivered throughput = min(offered, twin capacity) within 10 % (29/30 UEs)": true,
+  "B1: delay components add up to each packet's end-to-end latency": true,
+  "B1: radio layer reproduces e03 drop 0 (27.83 Mbps mean)": true,
+  "T3: each UE's delivered throughput = min(offered, twin capacity) within 10 % (30/30 UEs)": true,
+  "T3: delay components add up to each packet's end-to-end latency": true,
+  "T3: radio layer reproduces e03 drop 0 (50.06 Mbps mean)": true
+}

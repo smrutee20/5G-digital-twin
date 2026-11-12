@@ -1,0 +1,13 @@
+scenario,description,metric,predicted_change_twin_pct,predicted_change_twin_uncal_pct,predicted_change_38901_pct,actual_change_pct
+S1,UE density x2 (60 UEs),Mean UE throughput [Mbps],-50.5,-54.9,-51.9,-51.5
+S1,UE density x2 (60 UEs),5th-pct UE throughput [Mbps],-51.0,-33.0,-46.1,-50.7
+S2,UE density x3.3 (100 UEs),Mean UE throughput [Mbps],-69.5,-75.0,-74.1,-71.3
+S2,UE density x3.3 (100 UEs),5th-pct UE throughput [Mbps],-68.8,-69.3,-73.9,-69.9
+S3,Event hotspot: +40 UEs in a 45 m radius,Mean UE throughput [Mbps],-59.7,-59.0,-54.7,-61.2
+S3,Event hotspot: +40 UEs in a 45 m radius,5th-pct UE throughput [Mbps],-71.9,-56.5,-54.8,-74.3
+S4,Carrier reduced to 40 MHz,Mean UE throughput [Mbps],-60.9,-60.7,-60.9,-61.1
+S4,Carrier reduced to 40 MHz,5th-pct UE throughput [Mbps],-62.8,-61.2,-60.9,-63.1
+S5,Energy saving: site B switched off,Mean UE throughput [Mbps],-6.8,-8.4,21.6,-1.8
+S5,Energy saving: site B switched off,5th-pct UE throughput [Mbps],-26.8,-24.1,68.5,-17.2
+S6,Roll back to baseline scheduler (B1),Mean UE throughput [Mbps],-54.4,-28.4,27.2,-47.7
+S6,Roll back to baseline scheduler (B1),5th-pct UE throughput [Mbps],-100.0,-99.0,-58.0,-100.0

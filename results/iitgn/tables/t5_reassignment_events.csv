@@ -1,0 +1,8 @@
+trajectory,distance_m,strategy,from_ru,to_ru,los_to_old,los_to_new,rsrp_gain_db
+2,12.0,T3 twin,B225,A180,False,False,4.9
+2,40.0,T3 twin,A180,C173,False,False,3.5
+2,56.0,T3 twin,C173,B225,False,False,12.2
+2,92.0,T3 twin,B225,C173,False,True,7.0
+2,94.0,B1 nearest,B225,B105,False,False,-0.1
+3,64.0,T3 twin,B105,C53,False,False,7.3
+3,80.0,T3 twin,C53,B105,False,False,5.8

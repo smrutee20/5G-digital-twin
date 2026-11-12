@@ -1,0 +1,16 @@
+Parameter,Value
+Scene,"Sionna RT 'iitgn' (OpenStreetMap buildings, ITU-R P.2040 materials)"
+Area of interest,1300 m x 1300 m
+Carrier / band,3.5 GHz (n78)
+Bandwidth / SCS / PRBs,100 MHz / 30 kHz / 273
+Slot duration,0.5 ms
+gNB sites x sectors,3 x 3 = 9 RUs
+RU height / downtilt,25.0 m / 8.0 deg
+RU Tx power,46.0 dBm over 100 MHz (10.8 dBm per RE)
+RU antenna,"3GPP TR 38.901 sector element, 8 dBi, 65 deg HPBW, V-pol"
+UE height / antenna / NF,1.5 m / isotropic / 9.0 dB
+Noise per PRB,-109.4 dBm
+Ray tracer (twin),"max depth 3, 1e+06 rays/RU, diffraction=True, edge=True"
+Ray tracer (physical),"max depth 4, 5e+06 rays/RU, diffraction=True, diffuse=False"
+Link abstraction,MI-based effective SINR -> CQI (TS 38.214 Table 5.2.2.1-3) -> 10% BLER
+Traffic,"Full buffer, downlink"

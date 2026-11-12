@@ -1,0 +1,43 @@
+{
+  "name": "iitgn",
+  "origin_lat": 23.2107,
+  "origin_lon": 72.6872,
+  "size_m": 1400.0,
+  "num_buildings": 74,
+  "height_tagged_pct": 28.4,
+  "median_height_m": 12.0,
+  "max_height_m": 24.099999999999998,
+  "built_area_pct": 4.9,
+  "building_material": "concrete",
+  "ground_material": "medium_dry_ground",
+  "suggested_sites": [
+    {
+      "name": "A",
+      "xy": [
+        198.6,
+        -31.4
+      ],
+      "height_m": 20.0,
+      "host_building": "Block 01"
+    },
+    {
+      "name": "B",
+      "xy": [
+        -3.0,
+        350.0
+      ],
+      "height_m": 28.1,
+      "host_building": "Academic Block 12"
+    },
+    {
+      "name": "C",
+      "xy": [
+        -169.0,
+        -168.1
+      ],
+      "height_m": 24.0,
+      "host_building": "Kyzeel Hostel"
+    }
+  ],
+  "scene_xml": "scenes/iitgn/iitgn.xml"
+}

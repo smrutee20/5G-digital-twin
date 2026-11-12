@@ -1,0 +1,75 @@
+{
+  "messages_total": 10084,
+  "control_plane_messages": 3126,
+  "user_plane_messages": 6958,
+  "messages_per_interface": {
+    "F1-U": 2314,
+    "Uu": 1671,
+    "fronthaul": 1671,
+    "N3": 1161,
+    "N6": 1161,
+    "SBI": 974,
+    "F1-C": 546,
+    "N2": 336,
+    "E1": 126,
+    "N4": 124
+  },
+  "messages_per_procedure": {
+    "User Plane DL": 6808,
+    "Registration": 1682,
+    "PDU Session Establishment": 1112,
+    "Initial Access": 300,
+    "User Plane UL": 150,
+    "NF Registration": 10,
+    "NG Setup": 6,
+    "E1 Setup": 6,
+    "F1 Setup": 6,
+    "N4 Association Setup": 4
+  },
+  "control_messages_per_ue_attach": 103.1,
+  "latency_ms": {
+    "rrc_setup_ms": {
+      "median": 8.29,
+      "p95": 8.46,
+      "max": 8.49
+    },
+    "registration_ms": {
+      "median": 70.84,
+      "p95": 83.18,
+      "max": 84.95
+    },
+    "pdu_session_ms": {
+      "median": 36.5,
+      "p95": 47.0,
+      "max": 47.0
+    },
+    "power_on_to_first_byte_ms": {
+      "median": 135.63,
+      "p95": 154.11,
+      "max": 157.45
+    }
+  },
+  "dl_mbps_mean": 10.07,
+  "e2e_latency_ms": {
+    "packets": 20129,
+    "p50": 8.02,
+    "p95": 10.09
+  },
+  "mean_capacity_mbps": 55.26,
+  "pdu_sessions_per_upf": {
+    "UPF-EDGE": 20,
+    "UPF-CENTRAL": 10
+  },
+  "du_dropped_bytes": 0,
+  "du_queued_bytes_at_end": 317800,
+  "checks": {
+    "every message has time, source, destination, interface, procedure, message": true,
+    "every message uses a legal interface between the right element types": true,
+    "every UE is registered (UE and AMF) with an active PDU session": true,
+    "UE received bytes == PDSCH bytes in the trace == DU delivered == CU-UP delivery status": true,
+    "DU never serves more than the scheduler's per-UE capacity in an epoch": true,
+    "bytes sent by the DN == received by UEs + dropped at DUs + still queued": true,
+    "every packet's delay components add up to its end-to-end latency": true,
+    "radio layer reproduces e03 T3, drop 0 (50.065 Mbps mean)": true
+  }
+}
