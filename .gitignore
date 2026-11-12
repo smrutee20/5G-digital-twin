@@ -5,3 +5,8 @@ __pycache__/
 
 # made by run.py
 twin.html
+
+# made by the tasks (re-run them to get these back)
+data/quick/
+data/study/
+results/

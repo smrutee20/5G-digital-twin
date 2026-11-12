@@ -114,8 +114,10 @@ def build_page(twin, logs):
         for e in log:
             e.pop("fields", None)
             e.pop("t_arrive", None)
+    tasks_file = ROOT / "data" / "demo_tasks.json"                 # saved by tasks 1, 6 and 7 for the Scenario box and tabs
+    tasks = json.loads(tasks_file.read_text()) if tasks_file.exists() else {}
     data = dict(twin=twin, logs=logs, flows=FLOWS, identities=IDENTITIES, default_route=C.DEFAULT_ROUTE,
-                step_m=C.STEP_M)
+                step_m=C.STEP_M, tasks=tasks)
     libs = "".join("<script>\n" + (ROOT / "vendor" / f).read_text().replace("</script", "<\\/script") + "\n</script>\n"
                    for f in ("three.min.js", "OrbitControls.js"))
     page = (ROOT / "viewer.html").read_text()

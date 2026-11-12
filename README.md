@@ -1,142 +1,91 @@
 # IIT Gandhinagar 5G digital twin
 
-One page, `twin.html`, shows a phone walking on the IIT Gandhinagar campus two ways at once, on one shared
-timeline:
+A ray-traced digital twin of a 5G network on the IIT Gandhinagar campus (3 sites × 3 sectors, 3.5 GHz). It is
+used to compare ways of allocating radio resources (two baselines against a twin-driven strategy), and to show
+the 5G core flow (registration, PDU session, Xn handover, paging) as a phone walks across the campus.
 
-- **Left, the 3D twin.** The campus buildings and the 3 sites with their 9 sectors. Underneath is the
-  ray-traced RSRP map. The phone walks a route, and a line joins it to its serving sector. A small panel shows
-  the 3 strongest sectors at the phone's position and the serving sector.
-- **Right, the 5G network.** UE, gNB-A/B/C (one per site), AMF, AUSF, UDM with SIDF, NSSF, SMF, UPF and the
-  internet, joined by Uu, N1, N2, N3, N4, N6, N11 and Xn. Each message moves along its interface, with its
-  real name.
-- **Bottom.** What is happening now, in one plain line, and the identities in use: SUCI, SUPI, 5G-GUTI,
-  5G-S-TMSI, C-RNTI, the NGAP IDs, the TEIDs, PDU session ID, UE IP, S-NSSAI, QFI and 5QI.
+![The demo page: the 3D campus twin and the 5G network, at a handover](screenshot.png)
 
-What happens on the timeline:
-1. **Walk start.** SSB/MIB/SIB1, random access (C-RNTI) and RRC setup. Then registration: SUCI → AUSF →
-   UDM/SIDF → SUPI, authentication, security mode with IMEISV, and Registration Accept with the 5G-GUTI. Then
-   the PDU session: N11 and N4, TEIDs and the UE IP.
-2. **While walking.** Every 5 steps, a request goes up and a reply comes down: UE → gNB → N3 → UPF → N6 →
-   internet, and back.
-3. **Handover.** When the twin's A3 rule (another sector 3 dB stronger for 2 steps) picks a sector on
-   another site, the walk pauses while the core runs the Xn handover and the path switch at the UPF. The 3D
-   line and the network diagram change on the same frame.
-4. **After the walk.** With no data for 10 s the phone goes idle. A chat message arrives, the UPF buffers it,
-   N4 tells the SMF, the AMF pages, the phone answers with a Service Request (5G-S-TMSI), and the message is
-   delivered.
+## Tools
 
-| Route | Xn handovers (where) |
-|---|---|
-| 2 (shown first) | 4: B225→A180 at 12 m, A180→C173 at 40 m, C173→B225 at 56 m, B225→C173 at 92 m |
-| 3 | 2: B105→C53 at 64 m, C53→B105 at 80 m |
-| 1 | none |
+- **Sionna RT 2.2.0:** the ray tracer that computes the radio channels on the campus
+- **Mitsuba 3.9.1 / Dr.Jit 1.5.0:** the rendering engine under Sionna (runs on the CPU here, or on an NVIDIA GPU)
+- **Python 3.14.7** with NumPy 2.5.4 and Matplotlib 3.11.2; exact versions in [requirements.txt](requirements.txt)
+- **three.js r128:** the 3D view in the page (bundled in [vendor/](vendor/), so the page works offline)
+- **OpenStreetMap:** the 74 campus buildings
 
-## Run it
-
-Needs Python 3.10 or newer; nothing else to install.
+## Quick start
 
 ```
-python3 -m venv .venv          # once
-source .venv/bin/activate      # in every new terminal (after this, `python` works)
-python run.py                  # about 1 second: twin data -> network simulation -> twin.html
-open twin.html                 # or double-click it; everything is inside, so it works offline
-python test_flows.py           # checks the taught flows appear in order, and the handovers match the study
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt                           # a few minutes, once
+python run.py && open twin.html                           # the demo: built in about 1 second, opens offline
+for n in 1 2 3 4 5 6 7 8; do python tasks/task${n}_*.py; done   # the full study
 ```
 
-Controls: route, Play/Pause (space bar), Next step, speed, and camera (overview, or follow the phone). In the
-3D view, drag to turn, right-drag to move, and scroll to zoom.
+**Run times on an Apple M4 laptop:**
+- **The demo:** about 1 s to build. It needs no packages.
+- **The full study:** about 25 minutes from scratch. Of that, ray tracing takes about 8 minutes and the timing
+  benchmark about 15; with the traces already saved it takes about 15 minutes.
+- **Quick mode:** add `--quick` to every task for a check that runs in under a minute.
 
-## Using the tool
+## How it works
 
-**Open a given moment.** Add `#route=…&frame=…&view=…` to the address, for slides or for showing one message:
+1. **Build the campus.**
+   - [config.py](config.py) holds the 3 sites and 9 sectors, the handover rule and the 5G identities.
+   - [twin/scene.py](twin/scene.py) loads the OpenStreetMap campus into Sionna RT and places the sectors.
+   - [tasks/task1_scenario.py](tasks/task1_scenario.py) lists every radio and environment parameter.
+2. **Ray-trace channels and measurements.**
+   - [tasks/task2_measurements.py](tasks/task2_measurements.py) traces 20 random placements of 100 UEs. For
+     each UE and sector it gives RSRP, SINR, line of sight and path loss, saved in `data/`.
+   - [twin/radio.py](twin/radio.py) holds the formulas (power, noise, SINR, CQI → bits).
+3. **Allocate.** [twin/allocation.py](twin/allocation.py) has three strategies. Each UE needs 12 PRBs.
+   - **B1:** the nearest site, with fixed PRB blocks.
+   - **B2:** the nearest site, with random PRBs.
+   - **Twin:** the strongest ray-traced sector, with neighbouring sectors that interfere strongly given
+     different PRBs.
 
-```
-open "twin.html#route=2&frame=62"               # route 2, the first handover (phone switches to gNB-A)
-open "twin.html#route=2&frame=269&view=follow"  # route 2, the paging step, camera following the phone
-open "twin.html#route=3"                        # route 3 from the start
-```
+   [tasks/task3_baseline.py](tasks/task3_baseline.py) and
+   [tasks/task4_twin_allocation.py](tasks/task4_twin_allocation.py) run them on one placement.
+4. **Compare KPIs.** [tasks/task6_compare.py](tasks/task6_compare.py) runs all three on the 20 placements. It
+   reports SINR, throughput, interference and PRB use as mean ± 95 % interval, with a table and 3 plots in
+   `results/`.
+5. **Move the phone.** [tasks/task5_mobility.py](tasks/task5_mobility.py) re-traces three walking routes and
+   applies the A3 handover rule (3 dB, 2 steps). It works out the walker's throughput under B1 and the Twin,
+   and writes the routes into the demo's [data/twin.json](data/twin.json).
+6. **The 5G core flow.**
+   - [run.py](run.py) walks the phone along a route through a message-by-message model of the network. That
+     model lives in [net/](net/): the [UE and gNBs](net/ran.py), the [core](net/core.py), the [identities](net/ids.py)
+     and the [message clock](net/sim.py).
+   - It then builds `twin.html` from [viewer.html](viewer.html).
+   - [test_flows.py](test_flows.py) checks the flows follow the class order.
+7. **Predict before changing.** [tasks/task7_whatif.py](tasks/task7_whatif.py) predicts three changes (2× UEs,
+   site B off, UEs moved ~30 m) and compares them with a re-run under random shadowing.
+   [tasks/task8_platform.py](tasks/task8_platform.py) measures the ray-tracing time and memory.
 
-`open` with `#…` works for files in Safari and Chrome. If your browser drops it, open `twin.html` and add the
-`#…` part in the address bar.
+Task 1, 6 and 7 results also feed the page's Scenario box and its Strategies and What-if tabs, through
+[data/demo_tasks.json](data/demo_tasks.json). [PROGRESS.md](PROGRESS.md) has the full status and every number.
 
-**Ask "what if" questions.** Change a setting in `config.py`, then run `python run.py` again (1 second):
+## Key results
 
-| Change in `config.py` | What happens (Xn handovers on routes 1 / 2 / 3) |
-|---|---|
-| nothing (`A3_OFFSET_DB = 3.0`, `A3_STEPS = 2`) | 0 / 4 / 2, as in the study |
-| `A3_OFFSET_DB = 6.0` (stricter) | 0 / 3 / 2: the weakest switch, A180→C173 at only +3.5 dB, no longer happens |
-| `A3_STEPS = 1` (hastier) | 0 / 4 / 4: route 3 hands over back and forth more ("ping-pong") |
-| `INACTIVITY_S = 30.0` | the phone stays connected longer after the walk before paging is needed |
-| `DELAY_MS["N2"] = 10.0` | every procedure through the AMF takes longer; the order stays the same |
+The table is for 20 random placements of 100 UEs (mean ± 95 % interval).
 
-For example, from the terminal:
+| | B1 (nearest, fixed) | B2 (nearest, random) | Twin |
+|---|---|---|---|
+| Mean UE throughput (Mbps) | 6.48 ± 0.50 | 8.67 ± 0.35 | **10.92 ± 0.50** |
+| 5th-percentile throughput (Mbps) | 0.00 | 0.05 | **1.33** |
+| Mean interference (dBm per PRB) | −66.8 | −69.6 | **−72.0** |
 
-```
-sed -i '' 's/^A3_OFFSET_DB = 3.0/A3_OFFSET_DB = 6.0/' config.py && python run.py   # try a stricter rule
-sed -i '' 's/^A3_OFFSET_DB = 6.0/A3_OFFSET_DB = 3.0/' config.py && python run.py   # and back
-```
+- **Walking routes:** 0, 2 and 1 Xn handovers on routes 1–3. The Twin leaves the walking phone at 0 Mbps on
+  0–6.5 % of steps, against 50–76 % for B1.
+- **What-if:** the Twin predicts mean throughput within 0.85 Mbps of the re-run.
+- **Ray-tracing cost:** 20–30 ms per UE–sector link at 1 M rays on the M4 CPU, using under 1.1 GB of memory.
 
-`python test_flows.py` checks the handover places against the study, so it reports a difference after such a
-change. That is expected: it shows the change had an effect.
+## Limitations
 
-## Why this is useful
-
-- **It shows cause and effect.** A handover is not just a list of messages. You see *why* it happens (the
-  ray-traced signal of each sector where the phone is), and then *what* it costs the network (15 messages over
-  Uu, Xn, N2, N11, N4 and N3). Both appear on one screen, at the same moment.
-- **It makes identities concrete.** Each identity appears when a message first carries it and disappears when
-  it is released. For example, the SUPI never travels over the radio, and the C-RNTI and RAN UE NGAP ID change
-  at a handover while the AMF UE NGAP ID, 5G-GUTI and IP stay.
-- **It is one file, and needs no setup to view.** `twin.html` opens offline by double-click on any computer, so
-  it can be shared for revision or shown in a presentation.
-- **It can be checked and changed.** Every flow is plain Python, one small class per network element, and the
-  test checks it against the class order and the study's results. A setting in `config.py` answers a "what
-  if" question in a second.
-
-## Files
-
-| File | What it does |
-|---|---|
-| `run.py` | The one command: loads the twin data, simulates the network on each route, writes `twin.html` |
-| `config.py` | Every setting: sites and sectors, A3 rule, identities, IP addresses, delays, timeline |
-| `twin/twin_data.py` | Loads `data/twin.json` |
-| `net/ids.py` | Builds the identities: SUPI, SUCI (null scheme) and SIDF, IMEISV, 5G-GUTI, 5G-S-TMSI |
-| `net/sim.py` | The clock and `send()`: delivers each message after its interface's delay and logs it |
-| `net/ran.py` | The phone (UE) and the gNBs: broadcast, random access, RRC, NAS relay, Xn handover, paging |
-| `net/core.py` | AMF, AUSF, UDM, SIDF, NSSF, SMF, UPF (tunnels, NAT, buffering) and an internet server |
-| `viewer.html` | The page template (3D twin, network diagram, playback) that `run.py` fills in |
-| `test_flows.py` | Checks each taught flow's messages are in order on every route, and the handover places |
-| `vendor/` | three.js r128 and its OrbitControls (MIT licence), copied into `twin.html` so it works offline |
-| `data/twin.json` | Buildings, sectors, RSRP map picture, and the RSRP of all 9 sectors at every route step |
-| `REPORT.md` | The project report: aim, method, results, checks and limitations |
-
-## Computed by ray tracing vs assumed
-
-**Ray-traced.** All of this comes from the earlier study, run with Sionna RT at 3.5 GHz with up to 3 reflections
-plus diffraction, on the OpenStreetMap buildings. It is not re-traced here.
-- **The RSRP map.** The strongest sector's RSRP on a 5 m grid.
-- **The signal along each route.** The RSRP of all 9 sectors at each of the 66 points (2 m apart), plus line of
-  sight.
-- **Therefore:** the starting sector, every A3 decision, and every handover.
-
-Some signal values on the routes are not ray-traced. Where tracing found no path, or a path implausibly weak,
-the study used the 3GPP TR 38.901 formula instead. Route 2 has no such values. Route 1 has 5 of its 594 values
-(66 points × 9 sectors) filled, and route 3 has 198 of 594. The panel marks these "3GPP fill".
-
-`data/twin.json` holds all of this (and the OpenStreetMap buildings), so `python run.py` never traces.
-
-**Assumed:**
-- **Sites:** positions, heights, sector directions, 8° tilt and 46 dBm power.
-- **Buildings:** heights where OpenStreetMap has none. The model leaves out trees, terrain, fast fading,
-  noise and interference.
-- **The A3 rule:** 3 dB for 2 steps. The walking speed is 1.4 m/s.
-- **The whole 5G network:**
-  - the message delays per interface;
-  - the identity and IP values;
-  - when data is sent;
-  - the 10 s inactivity timer, and when the chat message arrives.
-
-  Authentication values (RAND, AUTN, RES*) are placeholders, with no cryptography. The order of messages
-  follows the class notes.
-- **One phone.** A change between two sectors of the same site would stay inside one gNB, with no core
-  messages; none happens on these routes.
+- **The scene:** OpenStreetMap has no trees or terrain, and some building heights are assumed.
+- **The channel and traffic:** each link has one gain across the band, with no fast fading, and every UE
+  wants the same 12 PRBs.
+- **The comparisons:**
+  - The what-if "actual" is the twin plus random shadowing, not a real network.
+  - The 5G core's timings and security values are illustrative.

@@ -14,7 +14,7 @@ SITES = {
 # The three routes of the earlier study: 66 points, 2 m apart, walked at 1.4 m/s (one step every 1.43 s)
 STEP_M = 2.0
 SPEED_MPS = 1.4
-DEFAULT_ROUTE = 2                               # the route with the most handovers (4)
+DEFAULT_ROUTE = 2                               # the route with the most handovers (2)
 
 # Handover rule (event A3): another sector 3 dB stronger than the serving one for 2 steps in a row
 A3_OFFSET_DB = 3.0

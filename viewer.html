@@ -65,15 +65,34 @@ footer { margin: 12px 16px 16px; background: var(--panel); border: 1px solid var
 .iflabel { font-size: 10.5px; fill: var(--ink2); text-anchor: middle; paint-order: stroke; stroke: var(--panel); stroke-width: 4px; }
 .iflabel.active { fill: var(--hl); font-weight: 700; }
 #dotlabel { font-size: 11.5px; font-weight: 700; fill: var(--hl); paint-order: stroke; stroke: var(--panel); stroke-width: 4px; }
+/* the Scenario box and the Strategies / What-if tabs */
+[hidden] { display: none !important; }
+.tabs { display: flex; gap: 0; margin-right: 6px; }
+.tabs button { border-radius: 0; }
+.tabs button:first-child { border-radius: 6px 0 0 6px; }
+.tabs button:last-child { border-radius: 0 6px 6px 0; }
+#scenario { bottom: 10px; right: 10px; line-height: 1.5; }
+#uePanel { top: 44px; left: 10px; width: 300px; }
+#uePanel table, .pane table { border-collapse: collapse; width: 100%; margin: 4px 0; font-size: 12px; }
+#uePanel td, .pane td, .pane th { padding: 1px 6px; text-align: right; white-space: nowrap; }
+#uePanel td:first-child, .pane td:first-child, .pane th:first-child { text-align: left; }
+.pane th { color: var(--ink2); font-weight: 600; border-bottom: 1px solid var(--line); }
+.pane td.on, .pane th.on { background: #e8f0fe; font-weight: 700; }
+.pane { padding: 10px 12px; height: 100%; overflow: auto; font-size: 13px; }
+.pane h3 { font-size: 13px; margin: 12px 0 4px; }
+#caseNote { top: 44px; left: 10px; width: 300px; }
 </style>
 </head>
 <body>
 <header>
   <h1>IIT Gandhinagar 5G digital twin</h1>
+  <span class="tabs"><button data-tab="mobility" aria-pressed="true">Mobility + 5G core</button><button data-tab="strategies">Strategies</button><button data-tab="whatif">What-if</button></span>
+  <span class="group" id="mobControls">
   <label class="group small">Route <select id="route"></select></label>
   <button id="play">▶ Play</button>
   <button id="next">Next step</button>
   <label class="group small">Speed <select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+  </span>
   <span class="group small">Camera <button data-view="overview">Overview</button><button data-view="follow">Follow phone</button></span>
 </header>
 
@@ -82,10 +101,15 @@ footer { margin: 12px 16px 16px; background: var(--panel); border: 1px solid var
     <div id="stage"></div>
     <div class="overlay" id="twinTitle"><h2>Digital twin: IITGN campus (ray-traced)</h2></div>
     <div class="overlay" id="signal"></div>
+    <div class="overlay" id="uePanel" hidden></div>
+    <div class="overlay" id="caseNote" hidden></div>
+    <div class="overlay small" id="scenario"></div>
   </section>
   <section>
     <div id="coreTitle"><h2>5G network: phone, gNBs and core</h2></div>
     <svg id="net" viewBox="0 0 680 470" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="pane" id="stratPane" hidden></div>
+    <div class="pane" id="whatifPane" hidden></div>
   </section>
 </main>
 
@@ -381,6 +405,172 @@ if (frame0) go(+frame0[1], false);
 const view0 = location.hash.match(/view=(\w+)/);
 if (view0) setView(view0[1]);
 renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+</script>
+<script>
+// ======================================================================= the Scenario box and the Strategies / What-if tabs
+// Everything here only draws saved results (data/demo_tasks.json, written by tasks 1, 6 and 7); nothing is computed.
+const TASKS = DATA.tasks || {};
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 1) => (v == null ? "–" : v.toFixed(d));
+
+// ---- the Scenario box (always visible)
+if (TASKS.scenario) {
+  const s = TASKS.scenario;
+  $("scenario").innerHTML = `<b>Scenario</b><br>${s.sites} sites × ${s.sectors / s.sites} sectors, masts ${s["mast height (m)"].join(", ")} m<br>
+    ${s["frequency (GHz)"]} GHz · ${s["bandwidth (MHz)"]} MHz · ${s.PRBs} PRBs · ${s["power per sector (dBm)"]} dBm per sector<br>
+    ${s.buildings} buildings (OpenStreetMap), ${s["scene (m)"].join(" × ")} m`;
+} else $("scenario").hidden = true;
+
+// ---- UEs on the map: a ball per UE, coloured by its serving site, and a line to its serving sector
+const ueGroup = new THREE.Group(); scene.add(ueGroup);
+let ueBalls = [];
+function drawUEs(xy, serving, selected) {
+  ueGroup.clear(); ueBalls = [];
+  xy.forEach(([x, y], u) => {
+    const s = SECTORS[serving[u]], colour = siteColor(s.site), chosen = u === selected;
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(chosen ? 10 : 6, 12, 10),
+                                new THREE.MeshBasicMaterial({ color: chosen ? 0xdc2626 : colour }));
+    ball.position.copy(V(x, y, 5)); ball.userData.u = u;
+    const line = new THREE.Mesh(new THREE.CylinderGeometry(chosen ? 1.6 : 0.8, chosen ? 1.6 : 0.8, 1, 6, 1, true),
+                                new THREE.MeshBasicMaterial({ color: colour, transparent: true, opacity: selected == null || chosen ? 0.9 : 0.25 }));
+    placeLine(line, ball.position.clone(), V(...s.pos));
+    ueGroup.add(ball, line); ueBalls.push(ball);
+  });
+}
+const siteOff = label("Site B off", "#dc2626", 40);
+siteOff.position.copy(V(T.sites.B.xy[0], T.sites.B.xy[1], T.sites.B.height_m + 120)); siteOff.visible = false; scene.add(siteOff);
+
+function frameCamera(xy) {                                 // overview of the sites and these UEs
+  const pts = Object.values(T.sites).map(s => s.xy).concat(xy);
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+  const size = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+  camera.position.copy(V(cx - size * 0.05, cy - size * 1.05, size * 1.45)); controls.target.copy(V(cx + size * 0.06, cy, 0));
+  controls.update();
+}
+
+// ---- the Strategies tab
+const DESCRIBE = {
+  B1: "Nearest site, the sector pointing at the UE; a fixed block of 12 PRBs per UE, counted from PRB 0 in every sector.",
+  B2: "Nearest site, the sector pointing at the UE; 12 random PRBs per UE.",
+  Twin: "The strongest sector from the ray tracing; strongly interfering sectors get different PRBs.",
+};
+let strategy = "Twin", selectedUE = null;
+function showStrategy() {
+  const S = TASKS.strategies;
+  if (!S) { $("stratPane").innerHTML = "Run the full study (tasks 1, 6 and 7) to fill this tab."; return; }
+  const st = S.strategies[strategy];
+  drawUEs(S.ue_xy, st.serving, selectedUE);
+  const names = Object.keys(S.kpis), metrics = Object.keys(S.kpis.B1);
+  $("stratPane").innerHTML = `<h2>Strategies: one placement of ${S.ue_xy.length} UEs</h2>
+    <div class="group" style="margin:8px 0">${names.map(n => `<button data-strategy="${n}" aria-pressed="${n === strategy}">${n}</button>`).join("")}</div>
+    <div class="small">${DESCRIBE[strategy]} The line from each UE goes to its serving sector. Click a UE on the map.</div>
+    <h3>PRBs used by each sector (${strategy})</h3><canvas id="prbGrid"></canvas>
+    <div class="small">Each row is a sector, each column one of the 273 PRBs; coloured = the sector transmits there${selectedUE == null ? "" : ", red = UE " + (selectedUE + 1)}. Where two rows are coloured in the same column, those sectors interfere.</div>
+    <h3>Results over ${S.drops} placements of ${S.ues_per_drop} UEs (task 6), mean ± 95 % confidence interval</h3>
+    <table><tr><th></th>${names.map(n => `<th class="${n === strategy ? "on" : ""}">${n}</th>`).join("")}</tr>
+    ${metrics.map(k => `<tr><td>${k}</td>${names.map(n => `<td class="${n === strategy ? "on" : ""}">${fmt(S.kpis[n][k][0])} ± ${fmt(S.kpis[n][k][1])}</td>`).join("")}</tr>`).join("")}</table>`;
+  document.querySelectorAll("[data-strategy]").forEach(b => b.onclick = () => { strategy = b.dataset.strategy; showStrategy(); });
+  drawPrbGrid(st.prb_plan);
+  showUE();
+}
+function drawPrbGrid(plan) {
+  const c = $("prbGrid"), left = 46, w = 2, h = 13;
+  c.width = left + plan[0].length * w; c.height = plan.length * h + 2;
+  c.style.width = "100%"; c.style.maxWidth = c.width + "px";
+  const g = c.getContext("2d");
+  g.font = "11px system-ui, sans-serif"; g.textBaseline = "middle";
+  plan.forEach((row, s) => {
+    g.fillStyle = css("--ink2"); g.fillText(NAMES[s], 0, s * h + h / 2 + 1);
+    row.forEach((ue, k) => {
+      g.fillStyle = ue < 0 ? "#eef0f4" : ue === selectedUE ? "#dc2626" : siteColor(NAMES[s][0]);
+      g.fillRect(left + k * w, s * h + 1, w, h - 2);
+    });
+  });
+}
+function showUE() {
+  const S = TASKS.strategies, u = selectedUE, panel = $("uePanel");
+  if (u == null) { panel.innerHTML = "<b>Click a UE</b> on the map to see what it measures from each sector."; return; }
+  const order = NAMES.map((n, i) => i).sort((a, b) => S.rsrp_dbm[u][b] - S.rsrp_dbm[u][a]);
+  const serving = S.strategies[strategy].serving[u];
+  panel.innerHTML = `<b>UE ${u + 1}</b> <span class="small">at (${S.ue_xy[u].map(v => v.toFixed(0)).join(", ")}) m</span>
+    <table><tr><td><b>sector</b></td><td><b>RSRP</b></td><td><b>SINR if it served</b></td><td><b>path</b></td></tr>
+    ${order.map(i => `<tr style="${i === serving ? "font-weight:700" : ""}"><td><span class="dot" style="background:${siteColor(NAMES[i][0])}"></span>${NAMES[i]}${i === serving ? " ← " + strategy : ""}</td>
+      <td>${S.rsrp_dbm[u][i] < -250 ? "no path" : fmt(S.rsrp_dbm[u][i]) + " dBm"}</td><td>${S.rsrp_dbm[u][i] < -250 ? "–" : fmt(S.sinr_db[u][i]) + " dB"}</td>
+      <td>${S.los[u][i] ? "line of sight" : "blocked"}</td></tr>`).join("")}</table>
+    ${Object.keys(S.strategies).map(n => `${n}: ${NAMES[S.strategies[n].serving[u]]}, ${fmt(S.strategies[n].throughput_mbps[u])} Mbps`).join("<br>")}`;
+}
+
+// ---- the What-if tab
+let whatifCase = "site B off";
+function showCase() {
+  const W = TASKS.whatif;
+  if (!W) { $("whatifPane").innerHTML = "Run the full study (tasks 1, 6 and 7) to fill this tab."; return; }
+  const names = Object.keys(W.cases), c = W.cases[whatifCase], now = W.cases.now;
+  drawUEs(c.ue_xy, c.serving, null);
+  siteOff.visible = !c.active.every(Boolean);
+  const metrics = ["mean throughput (Mbps)", "5th-percentile throughput (Mbps)", "mean SINR (dB)", "PRB utilisation (%)"];
+  $("caseNote").innerHTML = `<b>What-if: ${whatifCase}</b><br>${c.ue_xy.length} UEs; the line from each UE goes to the sector the twin serves it from.`;
+  $("whatifPane").innerHTML = `<h2>What-if: predict before applying a change</h2>
+    <div class="group" style="margin:8px 0">${names.map(n => `<button data-case="${n}" aria-pressed="${n === whatifCase}">${n}</button>`).join("")}</div>
+    <div class="small">The twin predicts the result of the change on its own ray-traced channel. ${W.what_actual_is} (task 7)</div>
+    <h3>${whatifCase}</h3>
+    <table><tr><th></th><th>predicted</th><th>actual</th><th>difference</th></tr>
+    ${metrics.map(k => `<tr><td>${k}</td><td>${fmt(c.predicted[k])}</td><td>${fmt(c.actual[k])}</td><td>${fmt(c.predicted[k] - c.actual[k])}</td></tr>`).join("")}</table>
+    <h3>Mean throughput (Mbps) in every case</h3>
+    <table><tr><th></th><th>predicted</th><th>actual</th><th>predicted change from "now"</th><th>actual change</th></tr>
+    ${names.map(n => { const x = W.cases[n].predicted["mean throughput (Mbps)"], y = W.cases[n].actual["mean throughput (Mbps)"];
+      return `<tr><td class="${n === whatifCase ? "on" : ""}">${n}</td><td>${fmt(x)}</td><td>${fmt(y)}</td>
+        <td>${fmt(x - now.predicted["mean throughput (Mbps)"])}</td><td>${fmt(y - now.actual["mean throughput (Mbps)"])}</td></tr>`; }).join("")}</table>`;
+  document.querySelectorAll("[data-case]").forEach(b => b.onclick = () => { whatifCase = b.dataset.case; showCase(); });
+}
+
+// ---- switching tabs (the 3D campus stays; what is drawn on it and the side panels change)
+let tab = "mobility";
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll("[data-tab]").forEach(b => b.setAttribute("aria-pressed", b.dataset.tab === t));
+  const mob = t === "mobility";
+  if (!mob && playing) go(cur, false);                     // pause the walk
+  [walker, halo, servLine, routeGroup].forEach(o => o.visible = mob);
+  ueGroup.visible = !mob; siteOff.visible = false;
+  const show = (el, on) => el.toggleAttribute("hidden", !on);   // the attribute works for HTML and SVG elements
+  [$("mobControls"), $("signal"), $("coreTitle"), $("net"), document.querySelector("footer")].forEach(el => show(el, mob));
+  document.querySelector('[data-view="follow"]').disabled = !mob;
+  [$("stratPane"), $("uePanel")].forEach(el => show(el, t === "strategies"));
+  [$("whatifPane"), $("caseNote")].forEach(el => show(el, t === "whatif"));
+  if (mob) { go(cur, false); setView(view); return; }
+  if (t === "strategies") { showStrategy(); frameCamera(TASKS.strategies ? TASKS.strategies.ue_xy : []); }
+  if (t === "whatif") { showCase(); frameCamera(TASKS.whatif ? TASKS.whatif.cases[whatifCase].ue_xy : []); }
+}
+document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => setTab(b.dataset.tab));
+document.querySelector('[data-view="overview"]').addEventListener("click", () => {
+  if (tab === "strategies" && TASKS.strategies) frameCamera(TASKS.strategies.ue_xy);
+  if (tab === "whatif" && TASKS.whatif) frameCamera(TASKS.whatif.cases[whatifCase].ue_xy);
+});
+
+// clicking a UE in the Strategies tab
+let pressedAt = null;
+renderer.domElement.addEventListener("pointerdown", e => pressedAt = [e.clientX, e.clientY]);
+renderer.domElement.addEventListener("pointerup", e => {
+  if (tab !== "strategies" || !pressedAt || Math.hypot(e.clientX - pressedAt[0], e.clientY - pressedAt[1]) > 5) return;
+  const r = renderer.domElement.getBoundingClientRect(), ray = new THREE.Raycaster();
+  ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+  ueGroup.updateMatrixWorld();
+  const hit = ray.intersectObjects(ueBalls)[0];
+  selectedUE = hit ? hit.object.userData.u : null;
+  showStrategy();
+});
+
+// twin.html#tab=strategies&strategy=B1&ue=5 or #tab=whatif&case=site%20B%20off opens that view
+{
+  const h = decodeURIComponent(location.hash);
+  const get = k => (h.match(new RegExp(k + "=([^&]+)")) || [])[1];
+  if (get("strategy")) strategy = get("strategy");
+  if (get("ue")) selectedUE = +get("ue") - 1;
+  if (get("case")) whatifCase = get("case");
+  if (get("tab")) setTab(get("tab"));
+}
 </script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 """
 Small test: on every route, every flow taught in class appears with its messages in the right order, and the
-handovers happen where the twin's A3 rule says (route 2: the study's 4 handovers at 12, 40, 56 and 92 m).
+handovers happen where task 5 finds them on the same ray-traced routes (route 2: at 56 and 92 m).
 Run:  python test_flows.py
 """
 import sys
@@ -33,7 +33,7 @@ TAUGHT = {
         "RRCSetupComplete[ServiceRequest]", "InitialUEMessage[ServiceRequest]",
         "InitialContextSetupRequest[ServiceAccept]", "PFCPSessionModificationRequest", "GTP_U", "PDSCH"],
 }
-STUDY_HANDOVERS_M = {1: [], 2: [12, 40, 56, 92], 3: [64, 80]}      # from the earlier study (event A3, 3 dB, 2 steps)
+STUDY_HANDOVERS_M = {1: [], 2: [56, 92], 3: [64]}      # from task 5 on the current ray tracing (A3, 3 dB, 2 steps)
 
 
 def in_order(expected, names):
@@ -71,7 +71,7 @@ for route in twin["routes"]:
                                             for s in sorted({e["step"] for e in msgs if e["flow"] == 5})]
         check(all(in_order(expected, g) for g in groups), f"{r} flow {flow} in the taught order")
     where = [e["step"] * 2 for e in msgs if e["message"] == "HandoverRequest"]
-    check(where == STUDY_HANDOVERS_M[route["id"]], f"{r} Xn handovers at {where} m, as in the study")
+    check(where == STUDY_HANDOVERS_M[route["id"]], f"{r} Xn handovers at {where} m, as in task 5")
     check(not any("supi" in e["fields"] for e in msgs if e["interface"] in ("Uu", "N2")),
           f"{r} the SUPI is never sent over the radio (Uu) or to the gNB (N2)")
     check(ue.received and ue.received[-1]["app"] == "chat message", f"{r} after paging, the chat message arrives")
