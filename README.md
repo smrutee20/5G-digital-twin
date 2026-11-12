@@ -4,7 +4,6 @@
 
 Evaluating alternative channel/resource allocations directly on a physical 5G network can be expensive and difficult to reproduce because performance depends on UE locations, propagation conditions and traffic load. A digital twin can provide a physics-aware representation of the radio environment and allow alternative allocations and network configurations to be evaluated before applying them to the network.
 
-### 5G and Beyond Projects 2026 - Semester-I- Final
 
 1. Deploy or use any of the digital-twin framework for eg. NVIDIA AODT and generate a scenario containing a RUs/gNBs and UEs and understand the available radio/environment configuration parameters.
 2. Obtain site-specific channel information and relevant RAN measurements for different UE locations and links.
@@ -15,8 +14,6 @@ Evaluating alternative channel/resource allocations directly on a physical 5G ne
 7. Use the same digital twin for a small what-if analysis, such as increasing UE density, changing UE positions or modifying resource allocation, and predict the resulting network performance before applying the configuration.
 8. Document the capabilities, computational requirements and limitations of the chosen digital-twin framework as a 5G/6G network digital-twin platform and identify the research problems for which it is suitable.
 
-**3GPP Reference Document:**  
-https://www.etsi.org/deliver/etsi_tr/128900_128999/128915/19.00.00_60/tr_128915v190000p.pdf
 
 ---
 
