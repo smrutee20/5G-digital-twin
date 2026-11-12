@@ -478,7 +478,7 @@ const PROCS = [
       d: [I("Inner IP", "203.0.113.10:443 → 10.45.0.7:51514"), I("At UPF", "PDR 2 (UE IP) → QER 1 (DL 1 Gbps AMBR) → FAR 2: GTP-U TEID " + ID.teid_dl1 + " → " + ID.gnb1_n3),
           I("PDU Session Container", "DL PDU SESSION INFORMATION, QFI 1, RQI 0"), I("At gNB", "TEID → PDU session 1, QFI 1 → DRB1 → PDCP → RLC queue → MAC scheduler")] },
     { f: "UE", t: "gNB1", p: "PHY", i: "Uu", m: "CSI report (CQI / RI / PMI)",
-      n: "The UE measures CSI-RS and reports channel quality. CQI 11 means 64QAM at rate 873/1024, about 5.1 bit per resource element (TS 38.214 table 2). Your twin computes the same SINR → CQI mapping in dt/kpi.py.",
+      n: "The UE measures CSI-RS and reports channel quality. CQI 11 means 64QAM at rate 873/1024, about 5.1 bit per resource element (TS 38.214 table 2). Your twin computes the same SINR → CQI mapping in twin/radio.py.",
       d: [I("Report", "periodic, PUCCH format 2, every 20 slots"), I("CQI", "11 → 64QAM, 5.1152 bit/RE", "Set to the highest MCS at ≤10% BLER"), I("RI", "2", "Two MIMO layers usable"), I("PMI", "i1 = (3,0), i2 = 1", "Preferred precoder from Type-I codebook"), I("Wideband SINR (implied)", "≈ 18.6 dB")] },
     { f: "gNB1", t: "UE", p: "PHY", i: "Uu", m: "DCI 1_1 + PDSCH transport block",
       n: "Each slot, the scheduler picks users and PRBs (proportional fair by default) and sets the MCS from CQI. The UE decodes and returns HARQ ACK or NACK. On a NACK the block is retransmitted and soft-combined.",
