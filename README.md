@@ -281,3 +281,23 @@ By combining campus geometry, radio propagation modelling, channel-aware resourc
 The experimental results show that the digital-twin-driven strategy achieves higher average user throughput, improves connectivity for poorly served users and reduces interference compared with the two baseline strategies.
 
 The what-if experiments further demonstrate how the digital twin can help estimate the impact of network changes before applying them to a physical network.
+
+---
+
+## SetuCity: learn telecoms in a 3D city
+
+`tools/signal_city/` is a self-contained 3D learning tool, a companion to the 2D 5G Core Explorer in `tools/understand_5g/`.
+Open `tools/signal_city/index.html` in a browser (no build step, no server).
+The IIT Gandhinagar logo in `tools/signal_city/assets/` is the institute's own mark, taken from Wikipedia.
+
+- **Study mode**: seven paths (The Technologies, Accessing the Internet, Making a Call, Mobile Coverage, 4G and 5G Use Cases,
+  Private Wireless Networks, Network Deployment). Each is a row of short lessons that unlock in order and ends with a quiz
+  (multiple choice and drag-to-reorder). Progress is saved in the browser.
+- **Explore mode**: free roam with clickable markers for use cases, concepts and quick facts, plus switchable network layers
+  (coverage cells, radio waves, signal heat map, small cells, fibre, X-ray view, IoT traffic, core diagram).
+- **Scenes**: every step moves the camera and animates the network. Several buildings open up as cutaways: data centre,
+  hospital ward, office floor, smart home and factory.
+
+Files: `js/world.js` (renderer, camera, day/night), `js/city.js` (the generated city), `js/fx.js` (network effects),
+`js/content.js` (all lesson text, scenes, quizzes and diagrams), `js/app.js` (interface). It uses the three.js copy in `vendor/`.
+To add or edit a lesson, change `js/content.js` only.
