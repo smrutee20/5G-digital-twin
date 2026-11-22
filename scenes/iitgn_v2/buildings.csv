@@ -1,0 +1,76 @@
+building_id,name,footprint_source,height_m,height_source,area_m2,v1_area_m2
+T001,"300 Auditorium, Learning Theatre, 2 Degree Cafe",OSM (as v1),14.0,set to G+3 (14 m),3834,3834
+T002,Academic Block 10,OSM (as v1),14.0,set to G+3 (14 m),2883,2883
+T003,600 Auditorium and Nyasa School (2nd Floor),OSM (as v1),14.0,set to G+3 (14 m),2928,2928
+T004,Academic Office,OSM (as v1),14.0,set to G+3 (14 m),2606,2606
+T005,Academic Block 11,OSM (as v1),14.0,set to G+3 (14 m),2513,2513
+T006,Block 05,drawing (A1: ACADEMIC_MASTER_PLAN.pdf),14.0,set to G+3 (14 m),2631,3761
+T007,Block 04,drawing (A4: ACADEMIC_MASTER_PLAN.pdf),14.0,set to G+3 (14 m),3118,2697
+T008,Academic Block 12,OSM (as v1),14.0,set to G+3 (14 m),1897,1897
+T009,Academic Block 13,OSM (as v1),14.0,set to G+3 (14 m),3461,3461
+T010,Block 07,drawing (A3: ACADEMIC_MASTER_PLAN.pdf),14.0,set to G+3 (14 m),2279,2956
+T011,Block 06,drawing (A2: ACADEMIC_MASTER_PLAN.pdf),14.0,set to G+3 (14 m),2664,3453
+T012,Aadhya Cafe,drawing (A5: ACADEMIC_MASTER_PLAN.pdf),14.0,set to G+3 (14 m),353,60
+T013,Research Park Block 09,OSM (as v1),14.0,set to G+3 (14 m),1124,1124
+T014,Canara Bank,OSM (as v1),14.0,set to G+3 (14 m),258,258
+T015,Central Arcade,OSM (as v1),14.0,set to G+3 (14 m),2968,2968
+T016,"Medical Center, IITGN",OSM (as v1),14.0,set to G+3 (14 m),240,240
+T017,Indoor Sports Complex IITGN,OSM (as v1),14.0,set to G+3 (14 m),11143,11143
+T018,,OSM (as v1),14.0,set to G+3 (14 m),160,160
+T019,Guest House IITGN,OSM (as v1),14.0,set to G+3 (14 m),4841,4841
+T020,Aibaan Hostel,OSM (as v1),14.0,set to G+3 (14 m),1484,1484
+T021,Beauki Hostel,OSM (as v1),14.0,set to G+3 (14 m),1069,1069
+T022,Chimair Hostel,OSM (as v1),14.0,set to G+3 (14 m),1270,1270
+T023,Old Mess IIT Gandhinagar,drawing (H2: student_housing.pdf),14.0,set to G+3 (14 m),1551,1473
+T024,Student Mess (Jaiswal + Mohani),drawing (H3: student_housing.pdf),14.0,set to G+3 (14 m),604,1985
+T025,Atul Bakery,OSM (as v1),3.5,set to 1 floor (3.5 m): kiosk/shop under 100 m2,21,21
+T026,Just Chill Cafe,OSM (as v1),3.5,set to 1 floor (3.5 m): kiosk/shop under 100 m2,15,15
+T027,Panchayat Circle,drawing (H4: student_housing.pdf),1.0,"set to 1 m: open seating, not a building",83,122
+T028,Mahavir,OSM (as v1),3.5,set to 1 floor (3.5 m): kiosk/shop under 100 m2,14,14
+T029,TeaPost,OSM (as v1),3.5,set to 1 floor (3.5 m): kiosk/shop under 100 m2,16,16
+T030,Amul,OSM (as v1),3.5,set to 1 floor (3.5 m): kiosk/shop under 100 m2,14,14
+T031,Krupa General Store,OSM (as v1),3.5,set to 1 floor (3.5 m): kiosk/shop under 100 m2,12,12
+T032,Student Lounge,OSM (as v1),14.0,set to G+3 (14 m),188,188
+T033,Block 01,OSM (as v1),14.0,set to G+3 (14 m),1005,1005
+T034,Duven Hostel,OSM (as v1),14.0,set to G+3 (14 m),1334,1334
+T035,Firpeal Hostel,drawing (H1: student_housing.pdf),14.0,set to G+3 (14 m),1555,1515
+T036,Mini Library (Hostel Area),OSM (as v1),14.0,set to G+3 (14 m),127,127
+T037,Emiet Hostel,OSM (as v1),14.0,set to G+3 (14 m),1440,1440
+T038,Griwiksh Hostel (Hostel G),OSM (as v1),14.0,set to G+3 (14 m),921,921
+T039,Dispensary,OSM (as v1),14.0,set to G+3 (14 m),964,964
+T040,Block 02,OSM (as v1),14.0,set to G+3 (14 m),1038,1038
+T041,Ijokha Hostel,OSM (as v1),14.0,set to G+3 (14 m),1583,1583
+T042,Jurqia Hostel,OSM (as v1),14.0,set to G+3 (14 m),1546,1546
+T043,Hiqom Hostel,OSM (as v1),14.0,set to G+3 (14 m),1992,1992
+T044,Block 29,OSM (as v1),14.0,set to G+3 (14 m),1009,1009
+T045,Block 03,OSM (as v1),14.0,set to G+3 (14 m),647,647
+T046,Lekhaag Hostel,OSM (as v1),14.0,set to G+3 (14 m),1546,1546
+T047,Block 28,OSM (as v1),14.0,set to G+3 (14 m),1006,1006
+T048,Block 04,OSM (as v1),14.0,set to G+3 (14 m),644,644
+T049,Kyzeel Hostel,OSM (as v1),14.0,set to G+3 (14 m),2187,2187
+T050,Block 05,OSM (as v1),14.0,set to G+3 (14 m),605,605
+T051,Block 06,OSM (as v1),14.0,set to G+3 (14 m),621,621
+T052,Block 27,OSM (as v1),14.0,set to G+3 (14 m),667,667
+T053,Block 26,OSM (as v1),14.0,set to G+3 (14 m),658,658
+T054,Block 07,OSM (as v1),14.0,set to G+3 (14 m),696,696
+T055,Block 25,OSM (as v1),14.0,set to G+3 (14 m),665,665
+T056,Block 08,OSM (as v1),14.0,set to G+3 (14 m),616,616
+T057,Block 09,OSM (as v1),14.0,set to G+3 (14 m),648,648
+T058,Block 24,OSM (as v1),14.0,set to G+3 (14 m),591,591
+T059,Block 10,OSM (as v1),14.0,set to G+3 (14 m),664,664
+T060,Block 23,OSM (as v1),14.0,set to G+3 (14 m),600,600
+T061,Block 22,OSM (as v1),14.0,set to G+3 (14 m),654,654
+T062,Block 11,OSM (as v1),14.0,set to G+3 (14 m),431,431
+T063,Block 12,OSM (as v1),14.0,set to G+3 (14 m),434,434
+T064,Block 21,OSM (as v1),14.0,set to G+3 (14 m),650,650
+T065,Block 13,OSM (as v1),14.0,set to G+3 (14 m),468,468
+T066,Block 20,OSM (as v1),14.0,set to G+3 (14 m),448,448
+T067,Block 19,OSM (as v1),14.0,set to G+3 (14 m),458,458
+T068,Block 14,OSM (as v1),14.0,set to G+3 (14 m),444,444
+T069,Block 15,OSM (as v1),14.0,set to G+3 (14 m),439,439
+T070,Block 16,OSM (as v1),14.0,set to G+3 (14 m),443,443
+T071,Block 18,OSM (as v1),14.0,set to G+3 (14 m),470,470
+T072,,OSM (as v1),14.0,set to G+3 (14 m),992,992
+T073,Block 17,OSM (as v1),14.0,set to G+3 (14 m),438,438
+T074,Security Office,OSM (as v1),14.0,set to G+3 (14 m),106,106
+LM01,Lal Minar,OpenStreetMap way 693494161 (outline),24.0,"OSM building:levels=6 x 4 m, estimated",115,0

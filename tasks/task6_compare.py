@@ -103,7 +103,7 @@ print(f"saved task6_comparison.csv and 3 plots in {results}")
 
 # 7. for the demo's Strategies tab (full study only): 30 UEs of drop 1, what each strategy does with them,
 #    what each UE measures from every sector, and the table above
-if not sc.quick():
+if not sc.quick() and sc.SCENE == "v1":            # the demo shows the study (v1); other scenes do not overwrite it
     n = 30
     xy, gain_db = drops[0][0][:n], drops[0][1][:n]
     rx = radio.prb_power_mw(gain_db)

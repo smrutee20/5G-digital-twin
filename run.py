@@ -1,7 +1,9 @@
 """
 One command for everything:   python run.py      then open twin.html (double-click; works offline).
 
-  Step 1  the twin: load data/twin.json (buildings, sectors, RSRP map, 3 routes, all from the study's ray tracing)
+  Step 1  the twin: load data/twin.json (buildings, sectors, RSRP map, 3 routes, all from the study's ray tracing).
+          If tasks/task10_walk_v2.py has run, the demo walks its 3 routes instead (campus roads, ray-traced on twin v2:
+          data/study_v2/walk_routes.json); data/twin.json and v1's task 5 results are not changed.
   Step 2  for each route: build the network (the phone, one gNB per site, the 5G core: net/ran.py, net/core.py)
   Step 3  walk the phone step by step; the twin's A3 rule picks the serving sector; flows 1-6 run
   Step 4  put the twin, every message and the 3D library (vendor/) into viewer.html, save it as twin.html
@@ -39,8 +41,9 @@ def build_network():
     return net, ue, internet
 
 
-def simulate(route, sector_names):
-    """Step 3: schedule the walk and the events on it, then run the clock."""
+def simulate(route, sector_names, offset_db=C.A3_OFFSET_DB, ttt_steps=C.A3_STEPS):
+    """Step 3: schedule the walk and the events on it, then run the clock. The handover rule (A3 offset in dB and
+    time-to-trigger in steps) defaults to the study's 3 dB / 2 steps; the server's /timeline can use another one."""
     net, ue, internet = build_network()
     steps = len(route["points"])
     a3 = dict(serving=None, candidate=None, count=0)        # the twin's handover rule (event A3)
@@ -56,9 +59,9 @@ def simulate(route, sector_names):
                     f"({rsrp[best]:.0f} dBm) on gNB-{best[0]}", kind="step")
             ue.power_on(best)
             return
-        # A3 rule: another sector must be 3 dB stronger than the serving one for 2 steps in a row
+        # A3 rule: another sector must be offset_db (3 dB) stronger than the serving one for ttt_steps (2) steps in a row
         serving = a3["serving"]
-        better = best != serving and rsrp[best] > rsrp[serving] + C.A3_OFFSET_DB
+        better = best != serving and rsrp[best] > rsrp[serving] + offset_db
         if better:
             a3["count"] = a3["count"] + 1 if a3["candidate"] == best else 1
             a3["candidate"] = best
@@ -67,9 +70,9 @@ def simulate(route, sector_names):
         note = f"The phone walks to {k * C.STEP_M:.0f} m. Serving sector {serving}: {rsrp[serving]:.0f} dBm"
         if better:
             note += (f". Sector {best} is {rsrp[best] - rsrp[serving]:.1f} dB stronger "
-                     f"({a3['count']} of {C.A3_STEPS} steps)")
+                     f"({a3['count']} of {ttt_steps} steps)")
         net.say(note, kind="step")
-        if a3["count"] < C.A3_STEPS:
+        if a3["count"] < ttt_steps:
             return
         a3.update(serving=best, candidate=None, count=0)    # the twin's serving sector changes
         if not ue.connected:                                # idle: just listen to the new sector
@@ -108,37 +111,106 @@ def simulate(route, sector_names):
     return net, ue
 
 
-def build_page(twin, logs):
+def page_log(log):
+    """The log as the page uses it (message contents and arrival times dropped)."""
+    for e in log:
+        e.pop("fields", None)
+        e.pop("t_arrive", None)
+    return log
+
+
+LABEL_OVERRIDES = ROOT / "data" / "label_overrides.json"
+FOOTPRINTS_V2 = ROOT / "scenes" / "iitgn_v2" / "footprints.geojson"
+
+
+def label_building(name, x, y, feats):
+    """Building id under a campus label: the v2 footprint that contains the label point and whose OSM name
+    contains the label text (labels are shortened OSM names; one point can sit inside two footprints)."""
+    from shapely.geometry import Point
+    p = Point(x, y)
+    inside = [(bid, nm) for bid, nm, poly in feats if poly.distance(p) < 1.0]
+    for bid, nm in inside:
+        if name.lower() in nm.lower():
+            return bid
+    return inside[0][0] if len(inside) == 1 else None
+
+
+def apply_label_overrides(context):
+    """Rename / hide 3D campus labels by building id (data/label_overrides.json). Page only: buildings.csv,
+    the scene and every radio result keep the OSM names and geometry."""
+    if not (LABEL_OVERRIDES.exists() and FOOTPRINTS_V2.exists() and context.get("labels")):
+        return
+    from shapely.geometry import shape
+    ov = json.loads(LABEL_OVERRIDES.read_text())
+    rename, hide = ov.get("rename", {}), set(ov.get("hide", []))
+    feats = [(f["properties"]["id"], f["properties"]["name"] or "", shape(f["geometry"]))
+             for f in json.loads(FOOTPRINTS_V2.read_text())["features"]]
+    out, done = [], []
+    for name, x, y, *rest in context["labels"]:
+        bid = label_building(name, x, y, feats)
+        if bid in hide:
+            done.append(f"hid {name!r} ({bid})"); continue
+        if bid in rename:
+            done.append(f"{name!r} -> {rename[bid]!r} ({bid})"); name = rename[bid]
+        out.append([name, x, y, *rest])
+    context["labels"] = out
+    missing = (set(rename) | hide) - {d.rsplit("(", 1)[1].rstrip(")") for d in done}
+    print("4. labels:", "; ".join(done) + (f"; not found: {sorted(missing)}" if missing else ""))
+
+
+def build_page(twin, logs, default_route=C.DEFAULT_ROUTE):
     """Step 4: one file with everything inside (data and 3D library), so it opens offline by double-click."""
     for log in logs.values():                               # the page does not need the message contents
-        for e in log:
-            e.pop("fields", None)
-            e.pop("t_arrive", None)
+        page_log(log)
     tasks_file = ROOT / "data" / "demo_tasks.json"                 # saved by tasks 1, 6 and 7 for the Scenario box and tabs
     tasks = json.loads(tasks_file.read_text()) if tasks_file.exists() else {}
-    data = dict(twin=twin, logs=logs, flows=FLOWS, identities=IDENTITIES, default_route=C.DEFAULT_ROUTE,
+    data = dict(twin=twin, logs=logs, flows=FLOWS, identities=IDENTITIES, default_route=default_route,
                 step_m=C.STEP_M, tasks=tasks)
-    libs = "".join("<script>\n" + (ROOT / "vendor" / f).read_text(encoding="utf-8").replace("</script", "<\\/script") + "\n</script>\n"
+    # optional: the corrected twin v2 (tasks/task9_scene_v2.py) and the campus layers (tools/campus_context.py)
+    for key, name in (("v2", "scene_v2.json"), ("context", "campus_context.json")):
+        f = ROOT / "data" / name
+        if f.exists():
+            data[key] = json.loads(f.read_text())
+    if "context" in data:
+        apply_label_overrides(data["context"])
+    libs ="".join("<script>\n" + (ROOT / "vendor" / f).read_text(encoding="utf-8").replace("</script", "<\\/script") + "\n</script>\n"
                    for f in ("three.min.js", "OrbitControls.js"))
     page = (ROOT / "viewer.html").read_text(encoding="utf-8")
     page = page.replace("<!--LIBRARIES-->", libs).replace("/*DATA*/null", json.dumps(data).replace("</", "<\\/"))
     (ROOT / "twin.html").write_text(page, encoding="utf-8")
 
 
+WALK_V2 = ROOT / "data" / "study_v2" / "walk_routes.json"      # task 10: walking routes on twin v2
+DEFAULT_WALK_ROUTE = 1                                         # "Hostels -> Lal Minar": one clean Xn handover
+
+
 def main():
     twin = get_twin()
     print("1. twin: loaded data/twin.json")
+    default_route = C.DEFAULT_ROUTE
+    if WALK_V2.exists():                                     # the demo walks task 10's v2 routes (twin.json unchanged)
+        walk = json.loads(WALK_V2.read_text())
+        twin = dict(twin, routes=walk["routes"], walk_scene="v2")
+        print(f"   walking routes: {WALK_V2.relative_to(ROOT)} (twin v2, campus roads)")
     sectors = [s["name"] for s in twin["sectors"]]
-    logs = {}
+    logs, xn_count = {}, {}
     for route in twin["routes"]:
         net, ue = simulate(route, sectors)
         logs[route["id"]] = net.log
         msgs = [e for e in net.log if e["kind"] == "msg"]
-        handovers = [f"{e['fields']['target_cell']}" for e in msgs if e["message"] == "HandoverRequest"]
-        print(f"2-3. route {route['id']}: {len(msgs)} messages, {len(handovers)} Xn handovers "
-              f"{'(to ' + ', '.join(handovers) + ')' if handovers else ''}")
-    build_page(twin, logs)
-    print(f"4. wrote twin.html ({(ROOT / 'twin.html').stat().st_size / 1e6:.1f} MB); route {C.DEFAULT_ROUTE} is shown first")
+        ho = [e for e in msgs if e["message"] == "HandoverRequest"]
+        xn_count[route["id"]] = len(ho)
+        print(f"2-3. route {route['id']} {route.get('name', '')}: {len(msgs)} messages, {len(ho)} Xn handovers "
+              + (f"(to {', '.join(e['fields']['target_cell'] for e in ho)} at steps {[e['step'] for e in ho]})" if ho else ""))
+        if "a3_handovers" in route:                          # the Xn handovers must be exactly task 10's site changes
+            want = [h["step"] for h in route["a3_handovers"] if h["xn"]]
+            got = [e["step"] for e in ho]
+            assert got == want, f"route {route['id']}: Xn at steps {got}, task 10's site changes at {want}"
+            print(f"     matches task 10: site changes at steps {want}")
+    if WALK_V2.exists():
+        default_route = DEFAULT_WALK_ROUTE
+    build_page(twin, logs, default_route)
+    print(f"4. wrote twin.html ({(ROOT / 'twin.html').stat().st_size / 1e6:.1f} MB); route {default_route} is shown first")
 
 
 if __name__ == "__main__":

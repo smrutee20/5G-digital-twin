@@ -2,6 +2,7 @@
 The IITGN scene in Sionna RT: the OpenStreetMap campus, 3 sites x 3 sectors, the radio settings, and ray tracing.
 Used by the tasks that ray-trace (tasks 1, 2, 7 and 8).
 """
+import os
 import sys
 from pathlib import Path
 
@@ -32,7 +33,11 @@ SEED = 7
 # ---- where UEs are placed: outdoors, in the area around the three sites (metres, x = east, y = north)
 AREA_X = (-400.0, 450.0)
 AREA_Y = (-450.0, 650.0)
-SCENE_XML = ROOT / "scenes" / "iitgn" / "iitgn.xml"
+# Which twin: v1 = the study's scene (OpenStreetMap buildings), v2 = buildings corrected from the IITGN drawings plus
+# trees (vegetation loss after tracing, twin/vegetation.py). Choose with TWIN_SCENE=v2; v1 is the default, unchanged.
+SCENE = os.environ.get("TWIN_SCENE", "v1")
+SCENES = {"v1": ROOT / "scenes" / "iitgn" / "iitgn.xml", "v2": ROOT / "scenes" / "iitgn_v2" / "iitgn.xml"}
+SCENE_XML = SCENES[SCENE]
 
 
 def quick():
@@ -42,8 +47,9 @@ def quick():
 
 def folders():
     """Where a task saves its data and its tables/plots (quick mode uses separate files)."""
-    data = ROOT / "data" / ("quick" if quick() else "study")
-    results = ROOT / "results" / ("quick" if quick() else "study")
+    name = ("quick" if quick() else "study") + ("" if SCENE == "v1" else f"_{SCENE}")    # v2 results kept apart
+    data = ROOT / "data" / name
+    results = ROOT / "results" / name
     data.mkdir(parents=True, exist_ok=True)
     results.mkdir(parents=True, exist_ok=True)
     return data, results
@@ -53,8 +59,8 @@ def sector_names():
     return [s["name"] for s in config.sectors()]
 
 
-def load():
-    """Load the campus into Sionna RT and put one transmitter on each of the 9 sectors."""
+def load(xml=None):
+    """Load the campus (default: the selected scene) into Sionna RT and put one transmitter on each of the 9 sectors."""
     import mitsuba as mi
     try:
         mi.set_variant("cuda_ad_mono_polarized")    # an NVIDIA GPU, if there is one
@@ -62,7 +68,8 @@ def load():
         mi.set_variant("llvm_ad_mono_polarized")    # otherwise the CPU
     from sionna.rt import load_scene, Transmitter, PlanarArray
 
-    scene = load_scene(str(SCENE_XML), merge_shapes=True)
+    scene = load_scene(str(xml or SCENE_XML), merge_shapes=True)
+    scene.twin_xml = Path(xml or SCENE_XML)                       # remembered for the scene's trees (vegetation)
     scene.frequency = FREQUENCY_HZ
     scene.bandwidth = BANDWIDTH_HZ
     scene.tx_array = PlanarArray(num_rows=1, num_cols=1, pattern=SECTOR_ANTENNA, polarization="V")
@@ -105,11 +112,14 @@ def trace(scene, ue_xy, rays=RAYS_PER_SECTOR, batch=100):
     """
     Ray-trace every sector -> every UE. Returns, per UE and sector:
       path_gain_db  received power / transmitted power, antenna gains included, averaged over the 100 MHz
+                    (scenes with trees: each path reduced by its vegetation loss, twin/vegetation.py)
       los           True if the straight line from the antenna to the UE is not blocked by a building
     """
     import mitsuba as mi
     from sionna.rt import Receiver, PathSolver
+    from twin import vegetation
 
+    trees = vegetation.load_trees(getattr(scene, "twin_xml", SCENE_XML))
     points = np.c_[ue_xy, np.full(len(ue_xy), UE_HEIGHT_M)]
     freqs = np.linspace(-BANDWIDTH_HZ / 2, BANDWIDTH_HZ / 2, 32)    # 32 frequencies across the band
     gains = []
@@ -121,7 +131,10 @@ def trace(scene, ue_xy, rays=RAYS_PER_SECTOR, batch=100):
         paths = PathSolver()(scene, max_depth=MAX_BOUNCES, samples_per_src=int(rays), max_num_paths_per_src=int(3e5),
                              diffraction=DIFFRACTION, edge_diffraction=DIFFRACTION, diffuse_reflection=False,
                              refraction=False, seed=SEED)
-        h = paths.cfr(frequencies=mi.Float(freqs.astype(np.float32)), out_type="numpy")    # [UE, 1, sector, 1, 1, freq]
+        if trees is None:                                                                # v1: exactly as before
+            h = paths.cfr(frequencies=mi.Float(freqs.astype(np.float32)), out_type="numpy")    # [UE, 1, sector, 1, 1, freq]
+        else:                                                                            # same, with vegetation loss
+            h = vegetation.cfr(paths, freqs.astype(np.float32), trees)
         gains.append((np.abs(h[:, 0, :, 0, 0, :]) ** 2).mean(-1))                       # mean |H|^2 over the band
     for name in list(scene.receivers):
         scene.remove(name)

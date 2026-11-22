@@ -30,11 +30,13 @@ button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color:
 .setucity:hover { filter: brightness(1.1); }
 .small { font-size: 12px; color: var(--ink2); }
 main { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 12px; padding: 0 16px; height: 66vh; min-height: 440px; }
-@media (max-width: 900px) { main { grid-template-columns: 1fr; height: auto; } #stage { height: 60vh; } }
 section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; min-width: 0; position: relative; overflow: hidden; }
 h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink2); margin: 0; }
 #stage { width: 100%; height: 100%; }
 #stage canvas { display: block; }
+/* narrow windows: one column; this must come after the #stage rule above, or that rule's height: 100% wins and the
+   3D view collapses (main has no fixed height in one-column mode) */
+@media (max-width: 900px) { main { grid-template-columns: 1fr; height: auto; } #stage { height: 60vh; } }
 .overlay { position: absolute; background: rgba(255, 255, 255, .92); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; }
 #twinTitle { top: 10px; left: 10px; }
 #signal { top: 44px; left: 10px; width: 275px; }
@@ -84,17 +86,47 @@ footer { margin: 12px 16px 16px; background: var(--panel); border: 1px solid var
 .pane { padding: 10px 12px; height: 100%; overflow: auto; font-size: 13px; }
 .pane h3 { font-size: 13px; margin: 12px 0 4px; }
 #caseNote { top: 44px; left: 10px; width: 300px; }
+/* the Configure tab */
+#cfgDefaults { top: 44px; left: 10px; width: 290px; max-height: calc(100% - 150px); overflow: auto; }
+#cfgDefaults table { border-collapse: collapse; width: 100%; }
+#cfgDefaults td { padding: 1px 4px; vertical-align: top; }
+#cfgDefaults td.changed { background: #fff3cd; font-weight: 700; }
+#cfgCoverage { bottom: 10px; left: 10px; width: 420px; max-width: calc(100% - 20px); }
+#cfgCoverage .big { font-size: 15px; font-weight: 700; }
+.cfgform { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 4px 8px; align-items: center; margin: 6px 0; }
+.cfgform input, .cfgform select { font: inherit; width: 100%; min-width: 0; padding: 3px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); }
+.cfgrow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; }
+.cfgrow input[type=number] { width: 72px; font: inherit; padding: 3px 6px; border: 1px solid var(--line); border-radius: 6px; }
+.cfgstatus { font-size: 12px; color: var(--ink2); }
+.cfgstatus.warn { color: #b45309; font-weight: 600; }
+.cfgstatus.err { color: var(--hl); font-weight: 600; }
+#cfgTable tr { cursor: pointer; }
+#cfgTable tr.sel td { background: #fdecec; }
+button.primary { background: var(--A); color: #fff; border-color: var(--A); font-weight: 600; }
+/* campus layers */
+#infoBtn { position: absolute; top: 10px; right: 10px; padding: 3px 12px; font-size: 13px; }
+#infoPanel { top: 44px; right: 10px; width: 330px; max-height: calc(100% - 60px); overflow: auto; line-height: 1.5; }
+#infoPanel h2 { margin: 8px 0 2px; } #infoPanel h2:first-child { margin-top: 0; }
+#infoPanel table { border-collapse: collapse; margin-top: 4px; } #infoPanel td, #infoPanel th { padding: 0 10px 0 0; text-align: left; }
+/* the RSRP colour bars appear only while the radio heat map is on */
+body:not(.heat) #signal #bar, body:not(.heat) #signal #barTicks, body:not(.heat) .heatbar { display: none; }
+#layerBar label { gap: 3px; } #layerBar input { margin: 0; }
+#ruleCtl input { width: 48px; } #ruleCtl label { gap: 3px; } #a3count { font-weight: 600; } #a3count.warn { color: #b45309; font-weight: 400; }
 </style>
 </head>
 <body>
 <header>
   <h1>IIT Gandhinagar 5G digital twin</h1>
-  <span class="tabs"><button data-tab="mobility" aria-pressed="true">Mobility + 5G core</button><button data-tab="strategies">Strategies</button><button data-tab="whatif">What-if</button></span>
+  <span class="tabs"><button data-tab="mobility" aria-pressed="true">Mobility + 5G core</button><button data-tab="strategies">Strategies</button><button data-tab="whatif">What-if</button><button data-tab="configure">Configure</button></span>
   <span class="group" id="mobControls">
   <label class="group small">Route <select id="route"></select></label>
   <button id="play">▶ Play</button>
   <button id="next">Next step</button>
   <label class="group small">Speed <select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+  <span class="group small" id="ruleCtl" title="Event A3: hand over when another sector is stronger than the serving one by the offset, for the time-to-trigger. The study used 3 dB / 2 steps.">Handover rule
+    <label class="group">offset <input type="number" id="a3off" min="0" max="20" step="0.5" value="3"> dB</label>
+    <label class="group">time-to-trigger <input type="number" id="a3ttt" min="1" max="20" step="1" value="2"> steps</label>
+    <span id="a3count"></span></span>
   </span>
   <span class="group small">Camera <button data-view="overview">Overview</button><button data-view="follow">Follow phone</button></span>
   <a class="setucity" id="setucity" href="https://anujjtiwari.github.io/SetuCity/" target="_blank" rel="noopener">Visit the Setu city &rarr;<small>learn telecoms in a 3D city</small></a>
@@ -108,12 +140,15 @@ footer { margin: 12px 16px 16px; background: var(--panel); border: 1px solid var
     <div class="overlay" id="uePanel" hidden></div>
     <div class="overlay" id="caseNote" hidden></div>
     <div class="overlay small" id="scenario"></div>
+    <div class="overlay" id="cfgDefaults" hidden></div>
+    <div class="overlay" id="cfgCoverage" hidden></div>
   </section>
   <section>
     <div id="coreTitle"><h2>5G network: phone, gNBs and core</h2></div>
     <svg id="net" viewBox="0 0 680 470" preserveAspectRatio="xMidYMid meet"></svg>
     <div class="pane" id="stratPane" hidden></div>
     <div class="pane" id="whatifPane" hidden></div>
+    <div class="pane" id="cfgPane" hidden></div>
   </section>
 </main>
 
@@ -192,13 +227,49 @@ for (const s of SECTORS) {
   const l = label(s.name, siteColor(s.site), 26); l.position.copy(V(...s.pos).add(dir.clone().multiplyScalar(80))); scene.add(l);
 }
 
-// the walking phone, its route, and the line to its serving sector
-const walker = new THREE.Mesh(new THREE.SphereGeometry(6, 18, 14), new THREE.MeshBasicMaterial({ color: 0xdc2626 }));
-const halo = new THREE.Mesh(new THREE.RingGeometry(10, 13, 40), new THREE.MeshBasicMaterial({ color: 0xdc2626, side: THREE.DoubleSide }));
+// the walking person with the phone, its route (dots on the road), and the line from the phone to its serving sector.
+// The person is drawn PERSON_SCALE x real size (a 1.75 m person -> 7 m) so it can be seen from the overview;
+// the radio always uses the phone at 1.5 m (twin/scene.py UE_HEIGHT_M).
+const PERSON_SCALE = 4;
+function makePerson() {
+  const g = new THREE.Group(), mat = c => new THREE.MeshLambertMaterial({ color: c });
+  const skin = mat(0xc68a5a), shirt = mat(0xdc2626), trousers = mat(0x1f3a5f), shoes = mat(0x1d2330);
+  const box = (w, h, d, m) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+  // metres of a 1.75 m person; local +x = forward, +y = up, z = sideways
+  const torso = box(0.24, 0.58, 0.40, shirt); torso.position.y = 1.18;
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.13, 1), skin); head.position.y = 1.62;
+  const hair = new THREE.Mesh(new THREE.IcosahedronGeometry(0.135, 1), mat(0x2b2118));
+  hair.scale.set(1, 0.6, 1); hair.position.set(-0.02, 1.68, 0);
+  const limb = (y, z, len, w, m, foot) => {                  // a pivot (hip or shoulder) with the limb hanging below
+    const p = new THREE.Group(); p.position.set(0, y, z);
+    const l = box(w, len, w, m); l.position.y = -len / 2; p.add(l);
+    if (foot) { const f = box(0.24, 0.07, 0.12, shoes); f.position.set(0.05, -len, 0); p.add(f); }
+    return p;
+  };
+  const legL = limb(0.89, 0.1, 0.86, 0.15, trousers, true), legR = limb(0.89, -0.1, 0.86, 0.15, trousers, true);
+  const armL = limb(1.43, 0.26, 0.6, 0.1, shirt), armR = limb(1.43, -0.26, 0.6, 0.1, shirt);
+  const hand = new THREE.Mesh(new THREE.IcosahedronGeometry(0.05, 0), skin); hand.position.y = -0.62; armR.add(hand);
+  const phone = new THREE.Group(); phone.position.set(0.02, -0.66, 0);    // in the right hand, screen up to the face
+  const body = box(0.02, 0.16, 0.08, mat(0x111827)); phone.add(body);
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.065), new THREE.MeshBasicMaterial({ color: 0x60a5fa, side: THREE.DoubleSide }));
+  screen.rotation.y = -Math.PI / 2; screen.position.x = -0.012; phone.add(screen);
+  phone.rotation.z = -0.6; armR.add(phone);
+  armR.rotation.z = 1.15;                                     // forearm forward: holding the phone in front
+  [head, hair, legL, legR, armL, armR].forEach(o => o.castShadow = false);
+  g.add(torso, head, hair, legL, legR, armL, armR);
+  g.scale.setScalar(PERSON_SCALE);
+  g.userData = { legL, legR, armL, phone, screen };
+  return g;
+}
+const walker = makePerson();
+const halo = new THREE.Mesh(new THREE.RingGeometry(8, 11, 48), new THREE.MeshBasicMaterial({ color: 0xdc2626, side: THREE.DoubleSide, transparent: true }));
 halo.rotation.x = -Math.PI / 2;
-const servLine = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 1, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0x2563eb, transparent: true }));
+const servLine = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 1, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0x2563eb, transparent: true }));
 const routeGroup = new THREE.Group();
 scene.add(walker, halo, servLine, routeGroup);
+// motion state: the person walks smoothly to each step's point; legs swing with the distance walked
+const WALK = { pos: new THREE.Vector3(), target: new THREE.Vector3(), heading: 0, targetHeading: 0, phase: 0,
+               sector: null, opacity: 1, flashAt: -1e9, last: performance.now(), shownIndex: -1, servingShown: null };
 function placeLine(mesh, a, b) {                           // stretch a thin cylinder from point a to point b
   const d = b.clone().sub(a);
   mesh.scale.set(1, d.length(), 1);
@@ -262,37 +333,124 @@ let route, log, cur = 0, playing = false, timer = null, anim = null, view = "ove
 const routeSel = document.getElementById("route");
 for (const r of T.routes) {
   const ho = DATA.logs[r.id].filter(e => e.message === "HandoverRequest").length;
-  routeSel.add(new Option(`Route ${r.id} · ${ho} handover${ho === 1 ? "" : "s"}`, r.id));
+  routeSel.add(new Option(r.name ? `${r.name} · ${Math.round(r.length_m)} m · ${ho} Xn handover${ho === 1 ? "" : "s"}`
+                                 : `Route ${r.id} · ${ho} handover${ho === 1 ? "" : "s"}`, r.id));
 }
 const speed = () => +document.getElementById("speed").value;
 const duration = e => (e.kind === "step" ? 170 : e.kind === "info" ? 1500 : e.flow === 4 ? 320 : 900) / speed();
 
-function setRoute(id) {
-  route = T.routes.find(r => r.id == id); log = DATA.logs[id]; routeSel.value = id;
-  routeGroup.clear();
-  const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(route.points.map(p => V(p[0], p[1], 1.5))),
-    new THREE.LineDashedMaterial({ color: 0x1d2330, dashSize: 5, gapSize: 4 }));
-  line.computeLineDistances(); routeGroup.add(line);
-  cur = 0;
-  setView(view);
-  go(0, false);
+// ---- the handover rule (event A3): offset (dB) and time-to-trigger (steps); the study used 3 dB / 2 steps.
+// The serving sector along the route is recomputed here from the route's saved, ray-traced RSRP (the same rule as
+// run.py and task 10); the message timeline for a new rule comes from the server (POST /timeline, run.py's network
+// simulation). Offline (no server) the route colours and counts follow the new rule, the messages stay 3 dB / 2 steps.
+const STUDY_RULE = { off: 3, ttt: 2 };
+const RULE = { ...STUDY_RULE };
+const ruleKey = (id, r = RULE) => `${id}|${r.off}|${r.ttt}`;
+const LOGS = {};                                            // timelines per route and rule
+for (const id in DATA.logs) LOGS[ruleKey(id, STUDY_RULE)] = DATA.logs[id];
+function a3(rsrp, off, ttt) {
+  const arg = v => v.reduce((b, x, i) => x > v[b] ? i : b, 0);
+  let serving = arg(rsrp[0]), cand = null, count = 0;
+  const path = [serving], handovers = [];
+  for (let k = 1; k < rsrp.length; k++) {
+    const best = arg(rsrp[k]);
+    if (best !== serving && rsrp[k][best] > rsrp[k][serving] + off) { count = best === cand ? count + 1 : 1; cand = best; }
+    else { count = 0; cand = null; }
+    if (count >= ttt) { handovers.push({ step: k, from: NAMES[serving], to: NAMES[best] }); serving = best; cand = null; count = 0; }
+    path.push(serving);
+  }
+  return { path, handovers };
 }
+const SERVER = location.protocol.startsWith("http") ? "" : "http://127.0.0.1:8765";
+async function timelineFor(id) {                           // the log for this route under the current rule
+  const k = ruleKey(id);
+  if (!LOGS[k]) {
+    const r = await fetch(SERVER + "/timeline", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ route: +id, offset_db: RULE.off, ttt_steps: RULE.ttt }) });
+    if (!r.ok) throw new Error(`server: ${r.status}`);
+    LOGS[k] = (await r.json()).log;
+  }
+  return LOGS[k];
+}
+
+function drawRoute() {                                      // dots coloured by the serving site under the current rule
+  routeGroup.clear();
+  const A = a3(route.rsrp, RULE.off, RULE.ttt);
+  const every = Math.max(1, Math.round(4 / DATA.step_m)), idx = route.points.map((p, i) => i).filter(i => i % every === 0);
+  const dots = new THREE.InstancedMesh(new THREE.CircleGeometry(1.4, 10), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }), idx.length);
+  const M = new THREE.Matrix4(), q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2), one = new THREE.Vector3(1, 1, 1);
+  idx.forEach((k, i) => {
+    const p = route.points[k]; M.compose(V(p[0], p[1], 0.5), q, one); dots.setMatrixAt(i, M);
+    dots.setColorAt(i, new THREE.Color(siteColor(SECTORS[A.path[k]].site)));
+  });
+  routeGroup.add(dots);
+  for (const h of A.handovers) {                            // a ring where each handover happens, in the new site's colour
+    const p = route.points[h.step], site = h.to[0], xn = h.from[0] !== site;
+    const m = new THREE.Mesh(new THREE.RingGeometry(xn ? 4 : 3, xn ? 5.6 : 3.8, 32),
+                             new THREE.MeshBasicMaterial({ color: siteColor(site), side: THREE.DoubleSide }));
+    m.rotation.x = -Math.PI / 2; m.position.copy(V(p[0], p[1], 0.6)); routeGroup.add(m);
+  }
+  for (const [p, c] of [[route.points[0], 0x16a34a], [route.points[route.points.length - 1], 0x1d2330]]) {   // start, end
+    const m = new THREE.Mesh(new THREE.RingGeometry(1.6, 2.6, 24), new THREE.MeshBasicMaterial({ color: c, side: THREE.DoubleSide }));
+    m.rotation.x = -Math.PI / 2; m.position.copy(V(p[0], p[1], 0.55)); routeGroup.add(m);
+  }
+  const xn = A.handovers.filter(h => h.from[0] !== h.to[0]).length, n = A.handovers.length;
+  const c = document.getElementById("a3count");
+  c.className = ""; c.textContent = `→ ${n} handover${n === 1 ? "" : "s"} (${xn} Xn)`;
+  c.title = A.handovers.map(h => `${h.from}→${h.to} at ${h.step * DATA.step_m} m`).join(", ") || "no handover";
+  return A;
+}
+
+let routeToken = 0;
+async function setRoute(id, step = 0) {
+  const token = ++routeToken;
+  route = T.routes.find(r => r.id == id); routeSel.value = id;
+  drawRoute();
+  log = LOGS[ruleKey(id, STUDY_RULE)];
+  try { const l = await timelineFor(id); if (token !== routeToken) return; log = l; }
+  catch (err) {
+    if (token !== routeToken) return;
+    const c = document.getElementById("a3count");
+    c.className = "warn"; c.textContent += " · messages need the server (python -m server); they still follow 3 dB / 2 steps";
+  }
+  WALK.shownIndex = -1; WALK.servingShown = null;
+  cur = Math.max(0, log.findIndex(e => e.step >= step));
+  setView(view);
+  go(cur, false);
+}
+function setRule() {
+  const off = +document.getElementById("a3off").value, ttt = Math.round(+document.getElementById("a3ttt").value);
+  if (!(off >= 0 && off <= 20 && ttt >= 1 && ttt <= 20)) return;
+  RULE.off = off; RULE.ttt = ttt;
+  const step = log && log[cur] ? log[cur].step : 0;
+  if (playing) go(cur, false);
+  setRoute(route.id, step);                                 // same place on the walk, new serving sector and messages
+}
+document.getElementById("a3off").onchange = document.getElementById("a3ttt").onchange = setRule;
+// keep Info's "Now:" line current
+["a3off", "a3ttt"].forEach(i => document.getElementById(i).addEventListener("change", () => typeof applyLayers === "function" && applyLayers()));
 
 function showTwin(e) {
   const k = e.step, [x, y] = route.points[k];
-  walker.position.copy(V(x, y, 4)); halo.position.copy(V(x, y, 0.6));
-  const s = SECTORS.find(s => s.name === e.serving);
-  servLine.visible = !!s;
-  if (s) {
-    placeLine(servLine, walker.position, V(...s.pos));
-    servLine.material.color.set(siteColor(s.site));
-    servLine.material.opacity = e.ue_state === "RRC connected" ? 1 : 0.35;     // faint while idle (camping only)
+  // where the person walks to, and which way it faces (along the route)
+  const P = route.points, a = P[Math.max(0, k - 1)], b = P[Math.min(P.length - 1, k + 1)];
+  WALK.target.copy(V(x, y, 0));
+  if (Math.hypot(b[0] - a[0], b[1] - a[1]) > 0.1) WALK.targetHeading = Math.atan2(b[1] - a[1], b[0] - a[0]);
+  const next = cur === WALK.shownIndex + 1;                  // played forward by one entry (not a jump)
+  if (!next || WALK.pos.distanceTo(WALK.target) > 12) {      // a jump: no walking animation
+    WALK.pos.copy(WALK.target); WALK.heading = WALK.targetHeading;
+    if (view === "follow") followCamera(k);
   }
-  if (view === "follow") followCamera(k);
+  const s = SECTORS.find(s => s.name === e.serving);
+  if (next && s && WALK.servingShown && WALK.servingShown !== e.serving) WALK.flashAt = performance.now();   // handover
+  WALK.shownIndex = cur; WALK.servingShown = e.serving || null;
+  WALK.sector = s || null;
+  WALK.opacity = e.ue_state === "RRC connected" ? 1 : 0.35;    // faint while idle (camping only)
+  if (s) { servLine.material.color.set(siteColor(s.site)); halo.material.color.set(siteColor(s.site)); walker.userData.screen.material.color.set(siteColor(s.site)); }
   // small panel: the 3 strongest sectors here, and the serving one
   const rs = route.rsrp[k], order = NAMES.map((n, i) => i).sort((a, b) => rs[b] - rs[a]).slice(0, 3);
   const row = i => `<tr><td><span class="dot" style="background:${siteColor(SECTORS[i].site)}"></span>${NAMES[i]}</td>
-    <td class="v">${rs[i].toFixed(1)} dBm</td><td>${route.los[k][i] ? "line of sight" : "blocked"}${route.traced[k][i] ? "" : " · 3GPP fill"}</td></tr>`;
+    <td class="v">${rs[i].toFixed(1)} dBm</td><td>${!route.los[k][i] ? "blocked" : route.los_clear && !route.los_clear[k][i] ? "line of sight through trees" : "line of sight"}${route.traced[k][i] ? "" : " · 3GPP fill"}</td></tr>`;
   const si = NAMES.indexOf(e.serving);
   const [lo, hi] = T.rsrp_map.dbm;
   document.getElementById("signal").innerHTML =
@@ -373,11 +531,16 @@ function overviewCamera() {
   const [x0, x1, y0, y1] = bounds(), cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, size = Math.max(x1 - x0, y1 - y0);
   camera.position.copy(V(cx - size * 0.05, cy - size * 1.05, size * 1.45)); controls.target.copy(V(cx + size * 0.06, cy, 0));
 }
-function followCamera(k) {                                 // stand beyond the phone, looking past it at the sites
-  const [x, y] = route.points[k], xs = Object.values(T.sites).map(s => s.xy);
-  const cx = xs.reduce((a, s) => a + s[0], 0) / xs.length, cy = xs.reduce((a, s) => a + s[1], 0) / xs.length;
-  let dx = x - cx, dy = y - cy; const n = Math.hypot(dx, dy) || 1; dx /= n; dy /= n;
-  camera.position.copy(V(x + dx * 300, y + dy * 300, 220)); controls.target.copy(V(x - dx * 120, y - dy * 120, 5));
+// follow the person from behind: the camera stays behind and above it, looking ahead along the walk
+const FOLLOW = { back: 60, up: 30, ahead: 35 };
+function followPose(pos, heading) {
+  const f = new THREE.Vector3(Math.cos(heading), 0, -Math.sin(heading));      // forward, in three.js axes
+  return [pos.clone().addScaledVector(f, -FOLLOW.back).setY(FOLLOW.up), pos.clone().addScaledVector(f, FOLLOW.ahead).setY(5)];
+}
+function followCamera(k, snap = true) {
+  if (!snap) return;                                         // the animation loop keeps the camera behind the person
+  const [cam, tgt] = followPose(WALK.pos, WALK.heading);
+  camera.position.copy(cam); controls.target.copy(tgt);
 }
 function setView(v) {
   view = v;
@@ -403,12 +566,60 @@ function resize() {                                         // keep the scene ce
 }
 addEventListener("resize", resize); resize();
 // twin.html#route=3&frame=120 opens route 3 at entry 120 (also handy for screenshots)
-setRoute(+((location.hash.match(/route=(\d)/) || [0, DATA.default_route])[1]));
-const frame0 = location.hash.match(/frame=(\d+)/);
-if (frame0) go(+frame0[1], false);
-const view0 = location.hash.match(/view=(\w+)/);
-if (view0) setView(view0[1]);
-renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+// #a3=6&ttt=2 opens with that handover rule (offset dB, time-to-trigger steps)
+{
+  const off0 = location.hash.match(/a3=([\d.]+)/), ttt0 = location.hash.match(/ttt=(\d+)/);
+  if (off0) { RULE.off = +off0[1]; document.getElementById("a3off").value = RULE.off; }
+  if (ttt0) { RULE.ttt = +ttt0[1]; document.getElementById("a3ttt").value = RULE.ttt; }
+}
+setRoute(+((location.hash.match(/route=(\d)/) || [0, DATA.default_route])[1])).then(() => {
+  const frame0 = location.hash.match(/frame=(\d+)/);
+  if (frame0) go(+frame0[1], false);
+  const view0 = location.hash.match(/view=(\w+)/);
+  if (view0) setView(view0[1]);
+  const cam = (decodeURIComponent(location.hash).match(/cam=([^&]+)/) || [, ""])[1].split(",").map(Number);
+  if (cam.length === 3 && cam.every(Number.isFinite)) {      // #cam=x,y,d (also applied by the layers script)
+    const [x, y, d] = cam; camera.position.copy(V(x - d * 0.15, y - d * 0.75, d * 0.65)); controls.target.copy(V(x, y, 0)); controls.update();
+  }
+});
+const HOLD_FLASH = /flash=1/.test(location.hash);
+function animateWalker(now) {
+  const dt = Math.min(0.1, (now - WALK.last) / 1000); WALK.last = now;
+  // walk towards the step's point (about one step's time, 170 ms at 1x), turn smoothly to the walking direction
+  const before = WALK.pos.clone();
+  WALK.pos.lerp(WALK.target, 1 - Math.exp(-dt * 14 * speed()));
+  const moved = WALK.pos.distanceTo(before);                // metres walked in this frame
+  let dh = WALK.targetHeading - WALK.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh));
+  WALK.heading += dh * (1 - Math.exp(-dt * 10));
+  WALK.phase += moved * Math.PI / 0.75;                     // one stride (two steps) per 1.5 m
+  const walking = moved / Math.max(dt, 1e-3) > 0.3;
+  const u = walker.userData, swing = walking ? 0.55 * Math.sin(WALK.phase) : 0;
+  const ease = x => x + ((walking ? 1 : 0) * swing - x) * Math.min(1, dt * 12);   // legs come to rest when standing
+  u.legL.rotation.z = walking ? swing : ease(u.legL.rotation.z);
+  u.legR.rotation.z = walking ? -swing : ease(u.legR.rotation.z);
+  u.armL.rotation.z = walking ? -0.7 * swing : ease(u.armL.rotation.z);
+  walker.position.copy(WALK.pos).setY(walking ? 0.04 * PERSON_SCALE * Math.abs(Math.cos(WALK.phase)) : 0);
+  walker.rotation.y = WALK.heading;
+  halo.position.copy(WALK.pos).setY(0.6);
+  // the line from the phone to the serving sector; at a handover it flashes (thick and pulsing) for 1.2 s
+  walker.updateMatrixWorld(true);
+  const phoneAt = u.phone.getWorldPosition(new THREE.Vector3());
+  servLine.visible = walker.visible && !!WALK.sector;
+  const f = HOLD_FLASH && WALK.sector ? 0.15 : (now - WALK.flashAt) / 1200;   // #flash=1 holds it (screenshots)
+  if (WALK.sector) {
+    placeLine(servLine, phoneAt, V(...WALK.sector.pos));
+    const r = f < 1 ? 1 + 1.2 * (1 - f) : 1;
+    servLine.scale.x = servLine.scale.z = r;
+    servLine.material.opacity = f < 1 ? 0.55 + 0.45 * Math.abs(Math.cos(f * Math.PI * 4)) : WALK.opacity;
+  }
+  const ring = f < 1 ? 1 + 2.5 * f : 1;                      // a ring spreads from the person's feet at the handover
+  halo.scale.set(ring, ring, ring); halo.material.opacity = f < 1 ? 1 - 0.8 * f : 0.9;
+  if (view === "follow" && walker.visible) {
+    const [cam, tgt] = followPose(WALK.pos, WALK.heading), k = 1 - Math.exp(-dt * 3);
+    camera.position.lerp(cam, k); controls.target.lerp(tgt, k);
+  }
+}
+renderer.setAnimationLoop(now => { animateWalker(now); controls.update(); renderer.render(scene, camera); });
 </script>
 <script>
 // ======================================================================= the Scenario box and the Strategies / What-if tabs
@@ -575,6 +786,490 @@ renderer.domElement.addEventListener("pointerup", e => {
   if (get("case")) whatifCase = get("case");
   if (get("tab")) setTab(get("tab"));
 }
+</script>
+<script>
+// ======================================================================= the Configure tab
+// Choose antenna settings and place UEs; the local server (server/, python -m server) re-runs Sionna RT and returns
+// per-UE RSRP / serving sector / SINR / LOS and a coverage map. Unlike the other tabs, nothing here is precomputed.
+const API = location.protocol.startsWith("http") ? "" : "http://127.0.0.1:8765";
+const CF = {
+  defaults: null, sectors: [], ue: null, rays: 200000, threshold: -110,
+  ues: [], nextId: 1, selected: null, sector: "A60", applyAll: false,
+  applied: null,          // the settings of the last Run (what the coverage map and UE numbers were computed with)
+  result: null, coverage: null, busy: false, queued: false, dirty: false, status: "", statusKind: "",
+};
+const cfgGroup = new THREE.Group(), cfgUEs = new THREE.Group(), cfgArrows = new THREE.Group();
+cfgGroup.add(cfgArrows, cfgUEs); cfgGroup.visible = false; scene.add(cfgGroup);
+const covCanvas = document.createElement("canvas"), covTex = new THREE.CanvasTexture(covCanvas);
+covTex.magFilter = THREE.NearestFilter;
+const covMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: covTex, transparent: true, depthWrite: false }));
+covMesh.rotation.x = -Math.PI / 2; covMesh.visible = false; cfgGroup.add(covMesh);
+const defaultArrows = [];                                  // the precomputed sector arrows: hidden while configuring
+scene.traverse(o => { if (o instanceof THREE.ArrowHelper) defaultArrows.push(o); });
+const clone = o => JSON.parse(JSON.stringify(o));
+// set by the campus-layers script below (scene switch and layer toggles); defaults when it is absent
+const twinScene = () => (typeof LAY === "undefined" ? "v1" : LAY.scene);
+const coverageLayerOn = () => typeof LAY === "undefined" || LAY.heat;      // the "Show radio heat map" button
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const raysText = r => (r >= 1e6 ? `${r / 1e6}e6` : `${r / 1e5}e5`) + " rays";
+
+// ---- talking to the server
+async function api(path, body) {
+  const r = await fetch(API + path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
+  if (!r.ok) throw new Error(`${r.status}: ${(await r.text()).slice(0, 300)}`);
+  return r.json();
+}
+async function cfgInit() {
+  if (CF.defaults) return;
+  try {
+    CF.defaults = await api("/defaults");
+  } catch (e) {
+    $("cfgPane").innerHTML = `<h2>Configure</h2><p>This tab needs the local twin server, which re-runs Sionna RT.</p>
+      <p>Start it from the project folder:<br><code>.venv/bin/python -m server</code><br>then open
+      <a href="http://127.0.0.1:8765">http://127.0.0.1:8765</a> (or reload this page).</p>
+      <button id="cfgRetry">Try again</button><p class="cfgstatus err">${esc(e.message)}</p>`;
+    $("cfgRetry").onclick = cfgInit;
+    return;
+  }
+  CF.sectors = clone(CF.defaults.sectors); CF.ue = clone(CF.defaults.ue);
+  CF.rays = CF.defaults.rays; CF.threshold = CF.defaults.threshold_dbm;
+  cfgDrawPane(); cfgDrawArrows(); cfgDrawDefaults();
+  run(true);
+}
+
+// one request at a time; a change made while one runs is sent when it finishes
+async function run(withCoverage) {
+  if (!CF.defaults) return;
+  if (withCoverage) {
+    CF.applied = { sectors: clone(CF.sectors), ue: clone(CF.ue), rays: CF.rays, scene: twinScene() }; CF.dirty = false;
+    if ($("cfgDirty")) $("cfgDirty").hidden = true;
+  }
+  if (!CF.applied) return;
+  if (CF.busy) { CF.queued = CF.queued === "cov" || withCoverage ? "cov" : "ue"; return; }
+  CF.busy = true;
+  const sent = CF.applied;
+  setStatus(withCoverage ? "Ray tracing the coverage map and the UEs …" : "Ray tracing the UEs …");
+  try {
+    const res = await api("/simulate", { ...CF.applied, ues: CF.ues.map(u => ({ id: u.id, x: u.x, y: u.y })),
+                                         coverage: withCoverage, threshold_dbm: CF.threshold });
+    CF.result = res;
+    if (res.coverage) CF.coverage = { ...res.coverage, rays: sent.rays };
+    setStatus(`Done in ${res.elapsed_s.toFixed(1)} s (cache ${res.cache}) · ${raysText(res.rays)}` +
+              (res.rays < CF.defaults.study_rays ? " · preview: fewer rays than the study, see the note under the coverage" : ""), "");
+  } catch (e) { setStatus("Server error: " + e.message, "err"); }
+  CF.busy = false;
+  cfgDrawResults();
+  const q = CF.queued; CF.queued = false;
+  if (q) run(q === "cov");
+}
+function setStatus(text, kind = "") { CF.status = text; CF.statusKind = kind; const s = $("cfgStatus"); if (s) { s.textContent = text; s.className = "cfgstatus " + kind; } }
+
+// ---- the right pane: sector and UE settings, buttons, the UE table
+function opts(list, v) { return list.map(o => `<option ${String(o) === String(v) ? "selected" : ""}>${o}</option>`).join(""); }
+function cfgDrawPane() {
+  const s = CF.sectors.find(x => x.name === CF.sector), u = CF.ue;
+  $("cfgPane").innerHTML = `<h2>Configure: antenna settings and UEs</h2>
+    <div class="small">${esc(CF.defaults.category)} Change the settings, press <b>Run</b>; click the campus to add a UE, drag to move, select + Delete to remove.</div>
+    <h3>gNB sector <select id="cfSector">${opts(CF.sectors.map(x => x.name), CF.sector)}</select>
+      <label class="small"><input type="checkbox" id="cfAll" ${CF.applyAll ? "checked" : ""}> apply to all sectors (not azimuth)</label></h3>
+    <div class="cfgform">
+      <label>Array</label><select data-g="array">${opts(["1x1", "4x4", "8x8", "16x16"], s.array)}</select>
+      <label>Pattern</label><select data-g="pattern">${opts(["iso", "dipole", "tr38901"], s.pattern)}</select>
+      <label>Polarization</label><select data-g="polarization">${opts(["V", "H", "cross"], s.polarization)}</select>
+      <label>Power (dBm)</label><input data-g="power_dbm" type="number" step="1" value="${s.power_dbm}">
+      <label>Azimuth (°)</label><input data-g="azimuth_deg" type="number" step="1" value="${s.azimuth_deg}">
+      <label>Downtilt (°)</label><input data-g="downtilt_deg" type="number" step="0.5" value="${s.downtilt_deg}">
+      <label>Height (m)</label><input data-g="height_m" type="number" step="1" value="${s.height_m}">
+      <label>SSB beams</label><input data-g="num_beams" type="number" min="1" max="64" step="1" value="${s.num_beams}">
+    </div>
+    <div class="small">Power is the sector total, split evenly across the elements (0.5 λ spacing). Beams: N fixed DFT beams across the 120° sector; RSRP = best beam.</div>
+    <h3>UE</h3>
+    <div class="cfgform">
+      <label>Pattern</label><select data-u="pattern">${opts(["iso", "dipole", "tr38901"], u.pattern)}</select>
+      <label>Array</label><select data-u="array">${opts(["1x1", "1x2", "2x2", "4x4"], u.array)}</select>
+      <label>Polarization</label><select data-u="polarization">${opts(["V", "H", "cross"], u.polarization)}</select>
+      <label>Height (m)</label><input data-u="height_m" type="number" step="0.5" value="${u.height_m}">
+      <label>Noise fig. (dB)</label><input data-u="noise_figure_db" type="number" step="0.5" value="${u.noise_figure_db}">
+      <label>Rays</label><select id="cfRays">${CF.defaults.ray_choices.map(r => `<option value="${r}" ${r === CF.rays ? "selected" : ""}>${raysText(r)}${r === CF.defaults.rays ? " (interactive)" : r === CF.defaults.study_rays ? " (study)" : ""}</option>`).join("")}</select>
+    </div>
+    <div class="cfgrow">
+      <button class="primary" id="cfRun">Run</button>
+      <label class="small">Random <input type="number" id="cfN" value="20" min="1" max="500"> UEs</label><button id="cfRandom">Place</button>
+      <button id="cfClear">Clear UEs</button><button id="cfReset">Reset to defaults</button>
+    </div>
+    <div id="cfgStatus" class="cfgstatus"></div>
+    <div id="cfgDirty" class="cfgstatus warn" ${CF.dirty ? "" : "hidden"}>Settings changed: press Run. Until then the numbers shown use the previous settings.</div>
+    <div id="cfgUETable"></div><div id="cfgUEDetail"></div>`;
+  $("cfSector").onchange = e => { CF.sector = e.target.value; cfgDrawPane(); cfgDrawUEs(); };
+  $("cfAll").onchange = e => { CF.applyAll = e.target.checked; };
+  document.querySelectorAll("#cfgPane [data-g]").forEach(i => i.onchange = () => {
+    const k = i.dataset.g, v = i.type === "number" ? +i.value : i.value;
+    const targets = CF.applyAll && k !== "azimuth_deg" ? CF.sectors : CF.sectors.filter(x => x.name === CF.sector);
+    targets.forEach(x => x[k] = v);
+    markDirty();
+  });
+  document.querySelectorAll("#cfgPane [data-u]").forEach(i => i.onchange = () => {
+    CF.ue[i.dataset.u] = i.type === "number" ? +i.value : i.value; markDirty();
+  });
+  $("cfRays").onchange = e => { CF.rays = +e.target.value; markDirty(); };
+  $("cfRun").onclick = () => run(true);
+  $("cfRandom").onclick = async () => {
+    try {
+      const r = await api(`/random_ues?n=${+$("cfN").value}&seed=${CF.nextId}&scene=${twinScene()}`);
+      r.ues.forEach(p => CF.ues.push({ id: "u" + CF.nextId++, x: p.x, y: p.y }));
+      cfgDrawTable(); cfgDrawUEs(); frameCamera(CF.ues.map(u => [u.x, u.y])); run(false);
+    } catch (e) { setStatus("Server error: " + e.message, "err"); }
+  };
+  $("cfClear").onclick = () => { CF.ues = []; CF.selected = null; cfgDrawTable(); cfgDrawUEs(); };
+  $("cfReset").onclick = () => { CF.sectors = clone(CF.defaults.sectors); CF.ue = clone(CF.defaults.ue); CF.rays = CF.defaults.rays; CF.dirty = false; cfgDrawAll(); run(true); };
+  setStatus(CF.status, CF.statusKind);
+  cfgDrawTable();
+}
+function markDirty() { CF.dirty = true; $("cfgDirty").hidden = false; cfgDrawCoverage(); cfgDrawDefaults(); cfgDrawArrows(); }
+
+function ueResult(id) { return CF.result ? CF.result.ues.find(r => r.id === id) : null; }
+function cfgDrawTable() {
+  if (!$("cfgUETable")) return;
+  if (!CF.ues.length) { $("cfgUETable").innerHTML = `<h3>UEs</h3><div class="small">No UEs yet: click the campus or place random UEs.</div>`; $("cfgUEDetail").innerHTML = ""; return; }
+  $("cfgUETable").innerHTML = `<h3>UEs (${CF.ues.length})</h3><table id="cfgTable"><tr><th>UE</th><th>serving</th><th>RSRP (dBm)</th><th>SINR (dB)</th><th>LOS</th><th>beam</th><th></th></tr>
+    ${CF.ues.map(u => { const r = ueResult(u.id);
+      return `<tr data-id="${u.id}" class="${u.id === CF.selected ? "sel" : ""}"><td>${u.id}${r && r.indoor ? " (indoor)" : ""}</td>
+        <td>${r ? `<span class="dot" style="background:${siteColor(r.serving[0])}"></span>${r.serving}` : "…"}</td>
+        <td>${r ? fmt(r.rsrp_dbm[r.serving]) : "…"}</td><td>${r ? fmt(r.sinr_db) : "…"}</td>
+        <td>${r ? (r.los[r.serving] ? "yes" : "no") : "…"}</td><td>${r && r.serving_beam_deg != null ? r.serving_beam_deg + "°" : "–"}</td>
+        <td><button data-del="${u.id}" title="delete" style="padding:0 6px">×</button></td></tr>`; }).join("")}</table>`;
+  document.querySelectorAll("#cfgTable tr[data-id]").forEach(tr => tr.onclick = e => {
+    if (e.target.dataset.del) { removeUE(e.target.dataset.del); return; }
+    CF.selected = tr.dataset.id; cfgDrawTable(); cfgDrawUEs();
+  });
+  const r = ueResult(CF.selected);
+  $("cfgUEDetail").innerHTML = !r ? "" : `<h3>${r.id} at (${r.x.toFixed(0)}, ${r.y.toFixed(0)}) m${r.indoor ? " · inside a building footprint (the model is outdoor)" : ""}</h3>
+    <table><tr><th>sector</th><th>RSRP (dBm)</th><th>path</th><th>best beam</th></tr>
+    ${CF.result.sector_names.slice().sort((a, b) => r.rsrp_dbm[b] - r.rsrp_dbm[a]).map(n => `<tr style="${n === r.serving ? "font-weight:700" : ""}">
+      <td><span class="dot" style="background:${siteColor(n[0])}"></span>${n}${n === r.serving ? " ← serving" : ""}</td>
+      <td>${r.rsrp_dbm[n] < -250 ? "no path" : fmt(r.rsrp_dbm[n])}</td><td>${r.los[n] ? (r.los_clear_of_trees && !r.los_clear_of_trees[n] ? "line of sight, through tree crowns" : "line of sight") : "blocked"}</td><td>${r.best_beam[n] + 1}</td></tr>`).join("")}</table>
+    <div class="small">${esc(CF.result.assumptions)}</div>`;
+}
+
+// ---- the always-visible defaults panel: today's model, and what the current settings change
+function cfgDrawDefaults() {
+  if (!CF.defaults) return;
+  const g = CF.defaults.gnb, u = CF.defaults.ue;
+  const vals = k => [...new Set(CF.sectors.map(s => String(s[k])))];
+  const row = (label, def, cur) => `<tr><td>${label}</td><td>${def}</td><td class="${String(cur) !== String(def) ? "changed" : ""}">${cur}</td></tr>`;
+  const gcur = k => { const v = vals(k); return v.length === 1 ? v[0] : "mixed (" + v.join(", ") + ")"; };
+  $("cfgDefaults").innerHTML = `<b>Defaults</b> <span class="small">(today's model) · current</span>
+    <table><tr><td colspan="3"><h2>gNB, every sector</h2></td></tr>
+    ${row("array", g.array, gcur("array"))}${row("pattern", g.pattern, gcur("pattern"))}${row("polarization", g.polarization, gcur("polarization"))}
+    ${row("power (dBm)", g.power_dbm, gcur("power_dbm"))}${row("height (m)", [...new Set(CF.defaults.sectors.map(s => s.height_m))].join(", "), gcur("height_m"))}${row("downtilt (°)", g.downtilt_deg, gcur("downtilt_deg"))}
+    ${row("SSB beams", g.num_beams, gcur("num_beams"))}
+    ${row("azimuths", "config.py", CF.sectors.every((s, i) => s.azimuth_deg === CF.defaults.sectors[i].azimuth_deg) ? "config.py" : "changed")}
+    <tr><td colspan="3"><h2>UE</h2></td></tr>
+    ${row("array", u.array, CF.ue.array)}${row("pattern", u.pattern, CF.ue.pattern)}${row("polarization", u.polarization, CF.ue.polarization)}
+    ${row("height (m)", u.height_m, CF.ue.height_m)}${row("noise figure (dB)", u.noise_figure_db, CF.ue.noise_figure_db)}
+    <tr><td colspan="3"><h2>Ray tracing</h2></td></tr>
+    ${row("rays per sector", raysText(CF.defaults.rays), raysText(CF.rays))}
+    ${row("twin scene", "v2", twinScene())}
+    </table><div class="small">${(CF.defaults.frequency_hz / 1e9).toFixed(1)} GHz · ${CF.defaults.bandwidth_hz / 1e6} MHz · ${CF.defaults.num_prb} PRBs · coverage grid ${CF.defaults.grid_m} m · the study used ${raysText(CF.defaults.study_rays)}</div>`;
+}
+
+// ---- the 3D view: configured sector arrows, UEs, coverage map
+const sectorPos = s => { const d = SECTORS.find(x => x.name === s.name); return V(d.pos[0], d.pos[1], s.height_m); };
+function cfgDrawArrows() {
+  cfgArrows.clear();
+  for (const s of CF.sectors) {
+    const a = s.azimuth_deg * Math.PI / 180, t = s.downtilt_deg * Math.PI / 180;
+    const dir = V(Math.cos(a) * Math.cos(t), Math.sin(a) * Math.cos(t), -Math.sin(t)).normalize();
+    const len = 40 + 8 * Math.log2(+s.array.split("x")[0] * 2);              // longer arrow = bigger array
+    cfgArrows.add(new THREE.ArrowHelper(dir, sectorPos(s), len, new THREE.Color(siteColor(s.name[0])).getHex(), 14, 9));
+  }
+}
+function cfgDrawUEs() {
+  cfgUEs.clear();
+  for (const u of CF.ues) {
+    const r = ueResult(u.id), chosen = u.id === CF.selected;
+    const colour = r ? siteColor(r.serving[0]) : "#5b6475";
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(chosen ? 10 : 7, 14, 10), new THREE.MeshBasicMaterial({ color: chosen ? 0xdc2626 : colour }));
+    ball.position.copy(V(u.x, u.y, 5)); ball.userData.id = u.id; cfgUEs.add(ball);
+    if (r && r.x === u.x && r.y === u.y) {
+      const s = CF.applied.sectors.find(x => x.name === r.serving);
+      const line = new THREE.Mesh(new THREE.CylinderGeometry(chosen ? 1.6 : 0.9, chosen ? 1.6 : 0.9, 1, 6, 1, true),
+        new THREE.MeshBasicMaterial({ color: colour, transparent: true, opacity: CF.selected == null || chosen ? 0.9 : 0.3 }));
+      placeLine(line, ball.position.clone(), sectorPos(s)); cfgUEs.add(line);
+    }
+  }
+}
+function hexRgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
+const RAMP = T.rsrp_map.colors.map(hexRgb), [LO, HI] = T.rsrp_map.dbm;
+function ramp(v) {
+  const f = Math.min(1, Math.max(0, (v - LO) / (HI - LO))) * (RAMP.length - 1), i = Math.min(RAMP.length - 2, Math.floor(f)), t = f - i;
+  return RAMP[i].map((c, k) => Math.round(c + (RAMP[i + 1][k] - c) * t));
+}
+function coveragePct() {
+  const v = CF.coverage.rsrp_dbm.filter(x => x != null);
+  return 100 * v.filter(x => x > CF.threshold).length / v.length;
+}
+function cfgDrawCoverage() {
+  const C = CF.coverage;
+  if (!C) { covMesh.visible = false; $("cfgCoverage").innerHTML = "<b>Coverage</b>: computing …"; return; }
+  const { nx, ny, x0, y0, cell_m } = C.grid;
+  covCanvas.width = nx; covCanvas.height = ny;
+  const ctx = covCanvas.getContext("2d"), img = ctx.createImageData(nx, ny);
+  for (let iy = 0; iy < ny; iy++) for (let ix = 0; ix < nx; ix++) {
+    const v = C.rsrp_dbm[iy * nx + ix], p = ((ny - 1 - iy) * nx + ix) * 4;     // canvas row 0 = north
+    if (v == null) { img.data[p + 3] = 0; continue; }                           // inside a building: not counted
+    const [r, g, b] = v > CF.threshold ? ramp(v) : [150, 150, 150];
+    img.data.set([r, g, b, v > CF.threshold ? 215 : 170], p);
+  }
+  ctx.putImageData(img, 0, 0); covTex.needsUpdate = true;
+  covMesh.scale.set(nx * cell_m, ny * cell_m, 1);
+  covMesh.position.copy(V(x0 + nx * cell_m / 2, y0 + ny * cell_m / 2, 0.3)); covMesh.visible = coverageLayerOn();
+  const pct = coveragePct(), stale = CF.dirty ? `<div class="cfgstatus warn">Settings changed since this map: press Run.</div>` : "";
+  const preview = C.label.includes("preview") ? `<div class="small">Fewer rays than the study: with the default settings, 2e5 rays give 76 % vs 91 % at 1e6 (−110 dBm); weak cells lose paths. Use 1e6 or 4e6 rays for numbers you report.</div>` : "";
+  $("cfgCoverage").innerHTML = `<div class="big">Coverage (RSRP &gt; <input id="cfThr" type="number" step="1" value="${CF.threshold}" style="width:64px"> dBm): ${pct.toFixed(1)} %</div>
+    <div class="small">of ${C.outdoor_cells} outdoor ${cell_m} m cells, with ${esc(C.gnb_assumptions)}; ${esc(C.ue_assumptions)}; ${raysText(C.rays)}; ${C.scene === "v2" ? "twin v2 (drawings + trees, vegetation loss to be calibrated)" : "twin v1 (study)"}.
+    Grey = below the threshold.${C.ue_antenna_note ? " " + esc(C.ue_antenna_note) : ""}</div>${stale}${preview}
+    <div class="heatbar" style="height:8px;border-radius:4px;margin:6px 0 2px;background:linear-gradient(90deg,${T.rsrp_map.colors.join(",")})"></div>
+    <div class="small heatbar" style="display:flex;justify-content:space-between"><span>${LO}</span><span>best-server RSRP (dBm)</span><span>${HI}</span></div>`;
+  $("cfThr").onchange = e => { CF.threshold = +e.target.value; cfgDrawCoverage(); };
+}
+function cfgDrawResults() { cfgDrawTable(); cfgDrawUEs(); cfgDrawCoverage(); }          // keeps the forms (and focus) as they are
+function cfgDrawAll() { cfgDrawPane(); cfgDrawUEs(); cfgDrawCoverage(); cfgDrawDefaults(); cfgDrawArrows(); }
+
+function removeUE(id) { CF.ues = CF.ues.filter(u => u.id !== id); if (CF.selected === id) CF.selected = null; cfgDrawTable(); cfgDrawUEs(); }
+
+// ---- entering / leaving the tab (runs after the shared setTab, which hides the other tabs' panels)
+function cfgShow(on) {
+  cfgGroup.visible = on; map.visible = !on; defaultArrows.forEach(a => a.visible = !on);
+  if (on) ueGroup.visible = false;
+  [$("cfgPane"), $("cfgDefaults"), $("cfgCoverage")].forEach(el => el.toggleAttribute("hidden", !on));
+  if (on) { frameCamera(CF.ues.map(u => [u.x, u.y])); cfgInit(); cfgDrawDefaults(); cfgDrawCoverage(); }
+}
+document.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => cfgShow(b.dataset.tab === "configure")));
+document.querySelector('[data-view="overview"]').addEventListener("click", () => { if (tab === "configure") frameCamera(CF.ues.map(u => [u.x, u.y])); });
+
+// ---- click to add, drag to move, Delete to remove (capture phase: before the camera controls see the press)
+const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+function rayAt(e) {
+  const r = renderer.domElement.getBoundingClientRect(), ray = new THREE.Raycaster();
+  ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+  return ray;
+}
+function groundAt(e) { const p = rayAt(e).ray.intersectPlane(groundPlane, new THREE.Vector3()); return p ? [p.x, -p.z] : null; }
+let cfgPress = null, cfgDrag = null;
+stage.addEventListener("pointerdown", e => {
+  if (tab !== "configure" || e.button !== 0) return;
+  cfgPress = [e.clientX, e.clientY];
+  cfgUEs.updateMatrixWorld();
+  const hit = rayAt(e).intersectObjects(cfgUEs.children.filter(o => o.userData.id))[0];
+  if (hit) { cfgDrag = hit.object.userData.id; controls.enabled = false; CF.selected = cfgDrag; cfgDrawUEs(); cfgDrawTable(); }
+}, true);
+stage.addEventListener("pointermove", e => {
+  if (!cfgDrag) return;
+  const p = groundAt(e), u = CF.ues.find(x => x.id === cfgDrag);
+  if (p && u) { u.x = +p[0].toFixed(2); u.y = +p[1].toFixed(2); cfgDrawUEs(); }
+}, true);
+addEventListener("pointerup", e => {
+  if (tab !== "configure" || !cfgPress) return;
+  const moved = Math.hypot(e.clientX - cfgPress[0], e.clientY - cfgPress[1]) > 5;
+  cfgPress = null;
+  if (cfgDrag) {                                           // finished a drag (or clicked a UE: just select it)
+    controls.enabled = true; cfgDrag = null;
+    if (moved) run(false); else { cfgDrawTable(); }
+    return;
+  }
+  if (moved || e.target !== renderer.domElement) return;   // that was a camera move
+  const p = groundAt(e);
+  if (!p) return;
+  const id = "u" + CF.nextId++;
+  CF.ues.push({ id, x: +p[0].toFixed(2), y: +p[1].toFixed(2) }); CF.selected = id;
+  cfgDrawTable(); cfgDrawUEs(); run(false);
+});
+document.addEventListener("keydown", e => {
+  if (tab !== "configure" || !CF.selected || !["Delete", "Backspace"].includes(e.key) || /INPUT|SELECT/.test(e.target.tagName)) return;
+  e.preventDefault(); removeUE(CF.selected);
+});
+
+// twin.html#tab=configure opens this tab
+if (tab === "configure") cfgShow(true);
+</script>
+<script>
+// ======================================================================= campus layers (twin v2)
+// The page shows twin v2 only (buildings corrected from the IITGN drawings, G+3 heights, Lal Minar, trees:
+// tasks/task9_scene_v2.py); v1 stays on disk for the report. Roads, lawns, fields, water, labels: OpenStreetMap
+// (tools/campus_context.py); zone colours: the IITGN master plan's legend. Everything is inside this page (offline).
+// Ground: grass by default; the "Show radio heat map" button switches it to the RSRP map and back.
+var LAY = { scene: DATA.v2 ? "v2" : "v1", heat: false, on: { buildings: true, trees: true, roads: true, labels: true } };
+const CTX = DATA.context || null, SV2 = DATA.v2 || null;
+const campus = { v1: null, v2: null, ground: new THREE.Group(), roads: new THREE.Group(), trees: new THREE.Group(), labels: new THREE.Group() };
+Object.values(campus).forEach(g => g && g.isObject3D && scene.add(g));
+let baseBuildings = null;                                   // the plain grey building mesh drawn above
+scene.traverse(o => { if (o.isMesh && o.material && o.material.color && o.material.color.getHex() === 0xbdb7ae) baseBuildings = o; });
+
+function buildingMesh(b, colours) {
+  const p = decode(b.points, Float32Array), q = new Float32Array(p.length);
+  for (let i = 0; i < p.length; i += 3) { q[i] = p[i]; q[i + 1] = p[i + 2]; q[i + 2] = -p[i + 1]; }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(q, 3));
+  g.setIndex(new THREE.BufferAttribute(decode(b.triangles, Uint32Array), 1));
+  if (colours) {
+    const c = decode(colours, Uint8Array), f = new Float32Array(c.length);
+    for (let i = 0; i < c.length; i++) f[i] = c[i] / 255;
+    g.setAttribute("color", new THREE.BufferAttribute(f, 3));
+  }
+  g.computeVertexNormals();
+  return new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: colours ? 0xffffff : 0xbdb7ae, vertexColors: !!colours,
+    roughness: 0.9, flatShading: true, side: THREE.DoubleSide }));
+}
+campus.v1 = buildingMesh(T.buildings, CTX && CTX.colors_v1); scene.add(campus.v1);
+if (SV2) { campus.v2 = buildingMesh(SV2.buildings, CTX && CTX.colors_v2); scene.add(campus.v2); }
+
+// ---- ground: lawns, forest, pitches, track, water, parking (under the coverage map), roads and paths (above it)
+const GROUND = { lawn: ["#a9d08e", 0.06], forest: ["#7daa69", 0.07], pitch: ["#7fc463", 0.09], track: ["#c8473a", 0.11],
+                 football: ["#5fb548", 0.1], water: ["#86bfe8", 0.05], parking: ["#c7ccd3", 0.08] };
+const GRASS = 0x9ccf7e, PLAIN = 0xe3e7ec;                    // ground: grass, or neutral under the heat map
+function flat(outer, holes, colour, h) {
+  const sh = new THREE.Shape(outer.map(([x, y]) => new THREE.Vector2(x, y)));
+  (holes || []).forEach(hh => sh.holes.push(new THREE.Path(hh.map(([x, y]) => new THREE.Vector2(x, y)))));
+  const m = new THREE.Mesh(new THREE.ShapeGeometry(sh), new THREE.MeshLambertMaterial({ color: colour, side: THREE.DoubleSide }));
+  m.rotation.x = -Math.PI / 2; m.position.y = h; return m;
+}
+function ribbons(lines, h, colour) {                          // one mesh for many polylines of given widths
+  const pos = [], idx = [];
+  for (const { pts, w } of lines) for (let i = 0; i < pts.length - 1; i++) {
+    const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], L = Math.hypot(x1 - x0, y1 - y0) || 1;
+    const nx = -(y1 - y0) / L * w / 2, ny = (x1 - x0) / L * w / 2, k = pos.length / 3;
+    for (const [x, y] of [[x0 + nx, y0 + ny], [x0 - nx, y0 - ny], [x1 - nx, y1 - ny], [x1 + nx, y1 + ny]]) pos.push(x, h, -y);
+    idx.push(k, k + 1, k + 2, k, k + 2, k + 3);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+  return new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: colour, side: THREE.DoubleSide }));
+}
+if (CTX) {
+  for (const a of CTX.areas) {
+    const [colour, h] = GROUND[a.kind] || ["#cccccc", 0.05];
+    const outer = a.pts.outer || a.pts, holes = a.pts.holes || [];
+    campus.ground.add(flat(outer, holes, colour, h));
+    if (a.kind === "pitch" || a.kind === "football") {       // white outline, like field markings
+      const l = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(outer.map(([x, y]) => V(x, y, 0.12))),
+                                   new THREE.LineBasicMaterial({ color: 0xffffff }));
+      campus.ground.add(l);
+    }
+  }
+  if (CTX.river_lines.length) campus.ground.add(ribbons(CTX.river_lines.map(pts => ({ pts, w: 30 })), 0.04, GROUND.water[0]));
+  campus.roads.add(ribbons(CTX.roads.filter(r => r.kind === "road"), 0.35, "#e4e0d8"));
+  campus.roads.add(ribbons(CTX.roads.filter(r => r.kind === "path"), 0.36, "#f3efe6"));
+  if (CTX.track && CTX.track.length) campus.ground.add(ribbons(CTX.track.map(pts => ({ pts, w: 1.2 })), 0.11, GROUND.track[0]));
+}
+
+// ---- trees (v2): one crown and one trunk per tree, crown from the vegetation model's base to the tree height
+if (SV2 && SV2.trees && SV2.trees.length) {
+  const n = SV2.trees.length, base = SV2.vegetation.crown_base_m;
+  const crown = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 12, 8), new THREE.MeshLambertMaterial({ color: 0x4e8a3a }), n);
+  const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.3, 0.4, 1, 6), new THREE.MeshLambertMaterial({ color: 0x7a5a3a }), n);
+  const M = new THREE.Matrix4(), q = new THREE.Quaternion();
+  SV2.trees.forEach(([x, y, d, h], i) => {
+    const b = Math.min(base, h / 2), c = (h - b) / 2;
+    M.compose(V(x, y, b + c), q, new THREE.Vector3(d / 2, c, d / 2)); crown.setMatrixAt(i, M);
+    M.compose(V(x, y, b / 2), q, new THREE.Vector3(1, b, 1)); trunk.setMatrixAt(i, M);
+  });
+  campus.trees.add(crown, trunk);
+}
+
+// ---- labels of the main buildings (OpenStreetMap names)
+function tag(text) {
+  const c = document.createElement("canvas"), x = c.getContext("2d"), font = "600 28px system-ui, -apple-system, sans-serif";
+  x.font = font; const w = Math.ceil(x.measureText(text).width) + 20; c.width = w; c.height = 40;
+  const y = c.getContext("2d"); y.font = font;
+  y.fillStyle = "rgba(255,255,255,0.88)"; y.fillRect(0, 0, w, 40);
+  y.fillStyle = "#1d2330"; y.fillText(text, 10, 29);
+  // constant size on screen (about 2.6 % of the view's height), so labels stay readable when zooming in or out
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, sizeAttenuation: false }));
+  s.scale.set(0.026 * w / 40, 0.026, 1); s.renderOrder = 9; return s;
+}
+if (CTX) for (const [name, x, y] of CTX.labels) { const s = tag(name); s.position.copy(V(x, y, 32)); campus.labels.add(s); }
+
+// ---- the coverage-map picture of each scene (same extent and colours)
+const sceneMapTex = { v1: map.material.map, v2: null };
+if (SV2) { sceneMapTex.v2 = new THREE.TextureLoader().load(SV2.rsrp_map.png); sceneMapTex.v2.magFilter = THREE.NearestFilter; }
+
+// ---- controls: layer toggles and the heat-map button (header); the rest behind one "Info" button (3D view)
+const bar = document.createElement("span"); bar.className = "group small"; bar.id = "layerBar";
+bar.innerHTML = Object.keys(LAY.on).map(k => `<label class="group"><input type="checkbox" data-layer="${k}" checked>${k}</label>`).join("")
+  + `<button id="heatBtn" aria-pressed="false">Show radio heat map</button>`;
+document.querySelector("header .tabs").after(bar);
+const heatBtn = document.getElementById("heatBtn");
+const infoBtn = document.createElement("button"); infoBtn.id = "infoBtn"; infoBtn.textContent = "Info"; infoBtn.setAttribute("aria-pressed", "false");
+const info = document.createElement("div"); info.className = "overlay small"; info.id = "infoPanel"; info.hidden = true;
+document.getElementById("stage").parentElement.append(infoBtn, info);
+const scenarioHtml = $("scenario").innerHTML; $("scenario").hidden = true;   // the Scenario box moves into Info
+const ba = SV2 ? Object.fromEntries(SV2.before_after.map(r => [r.metric, r])) : {};
+const baRow = (k, label) => ba[k] ? `<tr><td>${label}</td><td>${ba[k].v1}</td><td>${ba[k].v2}</td></tr>` : "";
+const swatch = c => `<span class="dot" style="background:${c};border:1px solid #0003"></span>`;
+function infoHtml() {
+  const v = CTX && CTX.v2_summary, veg = SV2 && SV2.vegetation;
+  return `<h2>Scenario</h2>${scenarioHtml.replace(/<b>Scenario<\/b><br>/, "")}` +
+    (v ? `<h2>Twin v2 (shown)</h2>${v.buildings} buildings: ${v.from_drawings} outlines from the IITGN drawings, the rest
+      OpenStreetMap; heights set to G+3 (${v.g3_m} m), kiosks/shops under 100 m² 1 floor (${v.floor_m} m), Lal Minar
+      ${v.lal_minar_m} m (estimated). ${SV2.trees.length} trees: vegetation loss ${veg.db_per_m} dB/m, cap ${veg.cap_db} dB,
+      <b>to be calibrated</b>.` : "") +
+    (tab === "strategies" || tab === "whatif" || (tab === "mobility" && T.walk_scene !== "v2")
+      ? `<br><i>This tab's results come from the study's twin (v1).</i>` : "") +
+    (T.walk_scene === "v2" ? `<h2>Walking person (Mobility tab)</h2>Three walks along the campus roads and paths
+      (OpenStreetMap), ray-traced on twin v2 every 2 m (tasks/task10_walk_v2.py); A3 handover rule 3 dB for 2 steps.
+      The person is drawn about ${PERSON_SCALE}× real size (about ${(1.75 * PERSON_SCALE).toFixed(0)} m tall) so it can
+      be seen from the overview; the radio uses the phone at 1.5 m. The line from the phone to the serving sector has
+      the site's colour and flashes at each handover. Route dots take the serving site's colour; rings mark handovers
+      (large ring = between sites, Xn).
+      <br><b>Handover rule.</b> The study used A3 offset <b>${STUDY_RULE.off} dB</b>, time-to-trigger <b>${STUDY_RULE.ttt}
+      steps</b> (2 m steps at 1.4 m/s, about 2.9 s); the route menu's handover counts use it. The "Handover rule" control
+      recomputes the serving sector from each route's saved ray-traced RSRP (no new ray tracing); the server rebuilds the
+      message timeline (python -m server). Now: ${RULE.off} dB / ${RULE.ttt} steps.` : "") +
+    (SV2 ? `<table><tr><th></th><th>v1 (study)</th><th>v2</th></tr>
+      ${baRow("coverage, RSRP > -110 dBm (% of outdoor 5 m cells)", "coverage %")}
+      ${baRow("LOS to serving sector (%)", "LOS %")}
+      ${baRow("median best-sector RSRP, UEs (dBm)", "median RSRP (dBm)")}
+      ${baRow("Twin: mean throughput (Mbps)", "Twin (Mbps)")}</table>` : "") +
+    (CTX ? `<h2>Legend</h2>` + Object.values(CTX.zones).map(z => swatch(z.color) + z.label).join("<br>") + "<br>" +
+      [["lawn", "lawns"], ["football", "football ground"], ["pitch", "other sports fields"], ["track", "running track (shape approx.)"], ["water", "water"]]
+        .map(([k, t]) => swatch(GROUND[k][0]) + t).join("<br>") + `<br>${swatch("#4e8a3a")}trees
+      <p>Map data © OpenStreetMap contributors (ODbL).</p>` : "");
+}
+
+function applyLayers() {
+  const s = LAY.scene, on = LAY.on, cfg = tab === "configure";
+  if (baseBuildings) baseBuildings.visible = false;
+  campus.v1.visible = on.buildings && s === "v1";
+  if (campus.v2) campus.v2.visible = on.buildings && s === "v2";
+  campus.trees.visible = on.trees && s === "v2";
+  campus.roads.visible = on.roads;
+  campus.labels.visible = on.labels;
+  if (sceneMapTex[s]) { map.material.map = sceneMapTex[s]; map.material.needsUpdate = true; }
+  map.visible = LAY.heat && !cfg;
+  if (typeof covMesh !== "undefined") covMesh.visible = LAY.heat && cfg && !!(CF && CF.coverage);
+  ground.material.color.set(LAY.heat ? PLAIN : GRASS);
+  document.body.classList.toggle("heat", LAY.heat);          // colour bars only with the heat map
+  heatBtn.textContent = LAY.heat ? "Hide radio heat map" : "Show radio heat map";
+  heatBtn.setAttribute("aria-pressed", LAY.heat);
+  info.innerHTML = infoHtml();
+}
+heatBtn.onclick = () => { LAY.heat = !LAY.heat; applyLayers(); };
+infoBtn.onclick = () => { info.hidden = !info.hidden; infoBtn.setAttribute("aria-pressed", !info.hidden); };
+document.querySelectorAll("[data-layer]").forEach(i => i.onchange = () => { LAY.on[i.dataset.layer] = i.checked; applyLayers(); });
+document.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", applyLayers));
+// twin.html#heat=1&info=1&off=labels,trees&cam=-336,278,120 : heat map on, Info open, layers off, camera aimed at (x, y)
+{
+  const h = decodeURIComponent(location.hash), get = k => (h.match(new RegExp(k + "=([^&]+)")) || [])[1];
+  if (get("heat") === "1") LAY.heat = true;
+  if (get("info") === "1") { info.hidden = false; infoBtn.setAttribute("aria-pressed", "true"); }
+  (get("off") || "").split(",").filter(k => k in LAY.on).forEach(k => {
+    LAY.on[k] = false; const i = document.querySelector(`[data-layer="${k}"]`); if (i) i.checked = false; });
+  const cam = (get("cam") || "").split(",").map(Number);
+  if (cam.length === 3 && cam.every(Number.isFinite)) {
+    const [x, y, d] = cam; camera.position.copy(V(x - d * 0.15, y - d * 0.75, d * 0.65)); controls.target.copy(V(x, y, 0)); controls.update();
+  }
+}
+applyLayers();
 </script>
 </body>
 </html>

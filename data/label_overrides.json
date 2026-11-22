@@ -1,0 +1,19 @@
+{
+  "_note": "Labels on the 3D campus view only, applied by run.py when twin.html is built. Keys are building ids of scenes/iitgn_v2/buildings.csv, which keeps the original OpenStreetMap names. Buildings, heights and radio results are not affected.",
+  "rename": {
+    "T001": "Jibaben Auditorium",
+    "T003": "Jasubai Auditorium"
+  },
+  "hide": [
+    "T013",
+    "T016",
+    "T039"
+  ],
+  "_why": {
+    "T001": "OSM: 300 Auditorium, Learning Theatre, 2 Degree Cafe",
+    "T003": "OSM: 600 Auditorium and Nyasa School (2nd Floor)",
+    "T013": "OSM: Research Park Block 09 (label removed)",
+    "T016": "OSM: Medical Center, IITGN (label removed; Central Arcade T015 kept)",
+    "T039": "OSM: Dispensary (label removed)"
+  }
+}

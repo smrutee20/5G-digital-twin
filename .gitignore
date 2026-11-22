@@ -9,4 +9,11 @@ twin.html
 # made by the tasks (re-run them to get these back)
 data/quick/
 data/study/
+data/study_v2/
 results/
+
+# made by the Configure server (cached coverage maps)
+server/cache/
+
+# IITGN drawings and notes: never commit
+plan/
