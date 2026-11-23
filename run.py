@@ -112,9 +112,8 @@ def simulate(route, sector_names, offset_db=C.A3_OFFSET_DB, ttt_steps=C.A3_STEPS
 
 
 def page_log(log):
-    """The log as the page uses it (message contents and arrival times dropped)."""
+    """The log as the page uses it (arrival times dropped; the message fields are kept for the packet view)."""
     for e in log:
-        e.pop("fields", None)
         e.pop("t_arrive", None)
     return log
 
@@ -167,7 +166,8 @@ def build_page(twin, logs, default_route=C.DEFAULT_ROUTE):
     data = dict(twin=twin, logs=logs, flows=FLOWS, identities=IDENTITIES, default_route=default_route,
                 step_m=C.STEP_M, tasks=tasks)
     # optional: the corrected twin v2 (tasks/task9_scene_v2.py) and the campus layers (tools/campus_context.py)
-    for key, name in (("v2", "scene_v2.json"), ("context", "campus_context.json")):
+    # pcap: one masked example frame per message type from the class captures (tools/extract_pcap.py)
+    for key, name in (("v2", "scene_v2.json"), ("context", "campus_context.json"), ("pcap", "pcap_examples.json")):
         f = ROOT / "data" / name
         if f.exists():
             data[key] = json.loads(f.read_text())

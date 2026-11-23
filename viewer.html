@@ -122,6 +122,22 @@ body.cfg #netSection { display: none; }
 .cfggrp > span { font-size: 12px; color: var(--ink2); font-weight: 600; }
 .cfggrp > div { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .cfggrp input[type=number] { width: 64px; font: inherit; padding: 3px 6px; border: 1px solid var(--line); border-radius: 6px; }
+/* the 5G Network Visualiser: element / packet / interface panel */
+#nfPanel { position: absolute; top: 34px; right: 8px; bottom: 8px; width: min(400px, calc(100% - 16px)); overflow: auto; z-index: 4;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 6px 20px rgba(0, 0, 0, .15); }
+#nfPanel .nfx { float: right; padding: 0 8px; }
+#nfPanel .nfh { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+#nfPanel h3 { font-size: 12px; margin: 10px 0 4px; }
+#nfPanel table { border-collapse: collapse; width: 100%; }
+#nfPanel td { padding: 2px 4px; vertical-align: top; border-bottom: 1px solid var(--muted); word-break: break-word; }
+#nfPanel a, .pklink { color: var(--A); cursor: pointer; text-decoration: underline dotted; }
+#nfPanel .nfmsgs button { padding: 0 6px; font-size: 11px; white-space: nowrap; }
+.pk { font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 8px; white-space: nowrap; }
+.pk.real { background: #dcfce7; color: #166534; } .pk.sim { background: #eef0f4; color: var(--ink2); }
+.stack { display: flex; flex-wrap: wrap; gap: 3px; } .stack span { border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; background: var(--muted); font-family: ui-monospace, Menlo, monospace; font-size: 11px; }
+.wstree { font: 11.5px/1.45 ui-monospace, Menlo, monospace; border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; margin-top: 4px; }
+.wstree details { margin-left: 12px; } .wstree > details { margin-left: 0; } .wstree .leaf { margin-left: 26px; white-space: pre-wrap; word-break: break-all; }
+.wstree summary { cursor: pointer; white-space: pre-wrap; word-break: break-all; }
 button.primary { background: var(--A); color: #fff; border-color: var(--A); font-weight: 600; }
 /* campus layers */
 #infoBtn { position: absolute; top: 10px; right: 10px; padding: 3px 12px; font-size: 13px; }
@@ -542,6 +558,7 @@ function go(i, keepPlaying = playing) {
   clearTimeout(timer);
   const e = log[cur];
   showTwin(e); showCore(e); showBottom(e);                 // one entry drives all three areas
+  if (typeof nfRefresh === "function") nfRefresh();       // an open element panel follows the timeline
   const ms = duration(e);
   animateDot(e, ms);
   playing = keepPlaying && cur < log.length - 1;
@@ -811,6 +828,216 @@ renderer.domElement.addEventListener("pointerup", e => {
   if (get("ue")) selectedUE = +get("ue") - 1;
   if (get("case")) whatifCase = get("case");
   if (get("tab")) setTab(get("tab"));
+}
+</script>
+<script>
+// ======================================================================= the 5G Network Visualiser: click to look inside
+// Click a network element (its role, its state at this point of the timeline, the messages it sent or received in
+// this flow), a message (the moving dot, the bottom line or a list row: a Wireshark-style packet view) or an
+// interface label (its protocol stack and the messages that use it). Every message is simulated by the twin; where
+// the class capture (data/pcap_examples.json, tools/extract_pcap.py) has the same message type, the decoded real
+// frame is shown too, with identifiers masked.
+const PCAP = DATA.pcap || { index: {}, frames: [], captures: [] };
+const hx = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const nrm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, "");
+const ROLE = {
+  UE: "The phone: finds a cell, connects over the radio (Uu), registers, and sends and receives the user's data.",
+  gNB: "Base station: 3 radio sectors; runs RRC with the phone, passes NAS to the AMF (N2) and tunnels data to the UPF (N3).",
+  AMF: "Access and mobility: registers the phone, authenticates it with the AUSF, gives it a 5G-GUTI, tracks and pages it.",
+  AUSF: "Authentication server: runs 5G-AKA for the AMF (challenge RAND/AUTN, checks RES*).",
+  UDM: "Subscriber database: the phone's keys and profile; makes the authentication vector.",
+  SIDF: "Inside the UDM: decrypts the SUCI back into the SUPI.",
+  NSSF: "Slice selection: tells the AMF which network slice (S-NSSAI) the phone may use.",
+  SMF: "Session management: creates the PDU session, gives the phone its IP address and programs the UPF over N4.",
+  UPF: "User plane: GTP-U tunnels to the gNBs (N3), NAT to the internet (N6), buffers data for an idle phone.",
+  Internet: "The data network beyond N6: here, the server the phone talks to.",
+};
+const IDS_OF = {
+  UE: ["c_rnti", "guti", "s_tmsi", "ue_ip", "pdu_session_id", "qfi"], gNB: ["c_rnti", "ran_ue_ngap_id", "amf_ue_ngap_id", "ul_teid", "dl_teid"],
+  AMF: ["supi", "guti", "s_tmsi", "amf_ue_ngap_id", "ran_ue_ngap_id", "s_nssai"], AUSF: ["suci", "supi"], UDM: ["suci", "supi"], SIDF: ["suci", "supi"],
+  NSSF: ["s_nssai"], SMF: ["supi", "pdu_session_id", "ue_ip", "qfi", "five_qi", "s_nssai", "ul_teid", "dl_teid"],
+  UPF: ["ue_ip", "ul_teid", "dl_teid", "qfi"], Internet: [],
+};
+const STACK = {
+  Uu: { rrc: ["PHY", "MAC", "RLC", "PDCP", "RRC"], data: ["PHY", "MAC", "RLC", "PDCP", "SDAP", "IP (user data)"], bcch: ["PHY", "MAC (BCH / DL-SCH)", "RRC (broadcast)"],
+        sync: ["PHY (PSS + SSS + PBCH)"], ra: ["PHY (PRACH / PDSCH)", "MAC"] },
+  N1: ["NAS-5GS (inside RRC on Uu, inside NGAP on N2)"], N2: ["IP", "SCTP", "NGAP"], N3: ["IP", "UDP", "GTP-U", "IP (user data)"],
+  N4: ["IP", "UDP", "PFCP"], N6: ["IP (user data)"], N11: ["IP", "TCP", "HTTP/2", "JSON"], SBI: ["IP", "TCP", "HTTP/2", "JSON"],
+  Xn: ["IP", "SCTP", "XnAP"], internal: ["function call inside the UDM"],
+};
+const IFACE_INFO = {
+  Uu: "Radio link between the phone and a gNB.", N1: "NAS signalling between the phone and the AMF; it rides inside RRC (Uu) and NGAP (N2).",
+  N2: "Signalling between a gNB and the AMF (NGAP over SCTP).", N3: "User data between a gNB and the UPF, in GTP-U tunnels (one TEID per direction).",
+  N4: "The SMF programs the UPF (PFCP rules: forward, buffer, NAT).", N6: "The UPF's link to the internet (plain IP, after NAT).",
+  N11: "AMF ↔ SMF, service-based (HTTP/2 + JSON).", SBI: "Service-based interface between core functions (HTTP/2 + JSON).",
+  Xn: "Between two gNBs: handover preparation and context release (XnAP over SCTP).",
+};
+const CAPTURE_ONLY = { N2: ["NGAP:NGSetupRequest", "NGAP:NGSetupResponse", "NGAP:UERadioCapabilityInfoIndication"],
+  Uu: ["RRC:securityModeCommand", "RRC:securityModeComplete", "RRC:ueCapabilityEnquiry", "RRC:ueCapabilityInformation"] };
+
+function stackOf(e) {
+  if (e.interface !== "Uu") return [...(STACK[e.interface] || ["?"]), ...(e.nas ? ["NAS-5GS"] : [])];
+  const m = e.message;
+  const s = m === "SSB" ? STACK.Uu.sync : /^(MIB|SIB1)$/.test(m) ? STACK.Uu.bcch : /^RandomAccess/.test(m) ? STACK.Uu.ra
+    : /^(PUSCH|PDSCH)$/.test(m) ? STACK.Uu.data : m === "Paging" ? ["PHY", "MAC (PCH)", "RRC (paging)"] : STACK.Uu.rrc;
+  return [...s, ...(e.nas ? ["NAS-5GS"] : [])];
+}
+
+// ---- which real frame matches a simulated message
+function capKeyFor(e) {
+  if (e.message === "GTP_U") return `GTP:G-PDU ${e.src.startsWith("gNB") ? "uplink" : "downlink"}`;
+  const want = nrm(e.message);
+  return Object.keys(PCAP.index).find(k => /^(NGAP|RRC):/.test(k) && nrm(k.split(":")[1]) === want) || null;
+}
+function capNasKey(nas) { return nas ? Object.keys(PCAP.index).find(k => k.startsWith("NAS:") && nrm(k.slice(4)) === nrm(nas)) || null : null; }
+function realFor(e) {                                       // {frame, key, nasMatch} or null
+  const k = capKeyFor(e);
+  if (!k) return null;
+  const ids = PCAP.index[k], nas = e.nas ? nrm(e.nas) : null;
+  const best = ids.find(i => !nas || PCAP.frames[i].types.some(([p, t]) => p === "NAS" && nrm(t) === nas)) ?? ids[0];
+  const f = PCAP.frames[best];
+  return { f, key: k, nasMatch: !nas || f.types.some(([p, t]) => p === "NAS" && nrm(t) === nas) };
+}
+const chip = real => real ? `<span class="pk real">real capture</span>` : `<span class="pk sim">simulated (not in capture)</span>`;
+
+// ---- the panel
+const nfPanel = document.createElement("div"); nfPanel.id = "nfPanel"; nfPanel.hidden = true;
+$("netSection").append(nfPanel);
+let nfMode = null;                                          // ["element", name] | ["packet", index] | ["iface", name] | ["capture", key]
+function nfOpen(mode) { nfMode = mode; nfPanel.hidden = false; nfDraw(); }
+function nfClose() { nfMode = null; nfPanel.hidden = true; }
+function nfRefresh() { if (nfMode && nfMode[0] === "element") nfDraw(); }
+function nfDraw() {
+  const [kind, arg] = nfMode;
+  nfPanel.innerHTML = `<button class="nfx" title="close">×</button>` +
+    (kind === "element" ? elementHtml(arg) : kind === "packet" ? packetHtml(log[arg], arg) : kind === "iface" ? ifaceHtml(arg) : captureHtml(arg));
+  nfPanel.querySelector(".nfx").onclick = nfClose;
+  nfPanel.querySelectorAll("[data-pkt]").forEach(b => b.onclick = () => nfOpen(["packet", +b.dataset.pkt]));
+  nfPanel.querySelectorAll("[data-jump]").forEach(b => b.onclick = () => { go(+b.dataset.jump, false); nfOpen(["packet", +b.dataset.jump]); });
+  nfPanel.querySelectorAll("[data-el]").forEach(b => b.onclick = () => nfOpen(["element", b.dataset.el]));
+  nfPanel.querySelectorAll("[data-if]").forEach(b => b.onclick = () => nfOpen(["iface", b.dataset.if]));
+  nfPanel.querySelectorAll("[data-cap]").forEach(b => b.onclick = () => nfOpen(["capture", b.dataset.cap]));
+}
+
+// where the current flow began: flows can interleave briefly (the PDU session request goes out before the AMF has
+// the Registration Complete), so up to 3 messages of another flow do not end it
+function flowStart(i) {
+  let s = i, other = 0;
+  for (let j = i - 1; j >= 0 && other <= 3; j--) {
+    if (log[j].flow === log[i].flow) { s = j; other = 0; } else if (log[j].kind === "msg") other++;
+  }
+  return s;
+}
+function elementHtml(name) {
+  const e = log[cur], ids = e.ids, isG = name.startsWith("gNB"), site = isG ? name.slice(-1) : null;
+  const idRow = k => ids[k] === undefined ? "" : `<tr><td>${hx(DATA.identities[k])}</td><td>${hx(ids[k])}</td></tr>`;
+  const seen = m => log.slice(0, cur + 1).some(x => x.kind === "msg" && (x.message === m || x.nas === m));
+  const lines = [];
+  if (name === "UE") lines.push(["radio state", e.ue_state], ["serving sector", e.serving ? `${sn(e.serving)} on gNB-${e.serving[0]}` : "none"]);
+  if (isG) {
+    const serving = e.serving && e.serving[0] === site;
+    lines.push(["sectors", SECTORS.filter(s => s.site === site).map(s => `${sn(s.name)} (${s.az}°)`).join(", ")],
+               ["UE context", serving && e.ue_state === "RRC connected" ? "yes: this gNB serves the phone" : serving ? "camped here, no connection" : "no"]);
+  }
+  if (name === "AMF") lines.push(["registration", seen("RegistrationComplete") ? "registered (RM-REGISTERED)" : seen("RegistrationRequest") ? "in progress" : "not registered"],
+                                 ["connection", ids.amf_ue_ngap_id !== undefined ? "CM-CONNECTED" : seen("RegistrationAccept") ? "CM-IDLE" : "–"],
+                                 ["tracking area list", seen("RegistrationAccept") ? "001-01-1" : "–"]);
+  if (name === "AUSF") lines.push(["5G-AKA", seen("Nausf_UEAuthentication_Authenticate_Response") ? (seen("AuthenticationResponse") ? "done: RES* matched" : "challenge sent, waiting for RES*") : "not started"]);
+  if (name === "UDM" || name === "SIDF") lines.push(["SUCI → SUPI", seen("DeconcealSUCI_Response") ? "done" : "not yet"]);
+  if (name === "NSSF") lines.push(["allowed slice", seen("Nnssf_NSSelection_Get_Response") ? "SST 1 (eMBB)" : "not asked yet"]);
+  if (name === "SMF") lines.push(["PDU session", ids.pdu_session_id === undefined ? "none" : ids.dl_teid !== undefined ? "active (downlink tunnel set)" : "user plane paused / being set up"]);
+  if (name === "UPF") {
+    let buffered = 0;
+    for (const x of log.slice(flowStart(cur), cur + 1)) if (x.kind === "msg" && x.flow === 6 && e.flow === 6) {
+      if (x.message === "IPPacket" && x.dst === "UPF") buffered++;
+      if (x.message === "GTP_U" && x.src === "UPF") buffered = Math.max(0, buffered - 1);
+    }
+    lines.push(["tunnels (TEIDs)", `uplink ${ids.ul_teid ?? "–"} (UPF end) · downlink ${ids.dl_teid ?? "– (none: buffering)"} (gNB end)`],
+               ["buffered packets", ids.dl_teid === undefined && buffered ? `${buffered} (waiting for the phone)` : "0"],
+               ["NAT", ids.ue_ip ? `${ids.ue_ip}:port ↔ 198.51.100.7:port` : "–"]);
+  }
+  const s0 = flowStart(cur), msgs = [];
+  for (let i = s0; i <= cur; i++) { const x = log[i]; if (x.kind === "msg" && x.flow === e.flow && (x.src === name || x.dst === name)) msgs.push(i); }
+  const idKeys = IDS_OF[isG ? "gNB" : name] || [];
+  return `<div class="nfh">${hx(POS[name][2])} <span class="small">${hx(POS[name][3])}</span></div>
+    <div class="small">${ROLE[isG ? "gNB" : name]}</div>
+    <h3>State now <span class="small">(${log[cur].kind === "msg" ? hx(msgName(log[cur])) : "step " + log[cur].step}, flow ${e.flow})</span></h3>
+    <table>${lines.map(([k, v]) => `<tr><td>${hx(k)}</td><td>${hx(v)}</td></tr>`).join("")}${(isG && !(e.serving && e.serving[0] === site)) ? "" : idKeys.map(idRow).join("")}</table>
+    <h3>Messages in this flow so far (${msgs.length})</h3>
+    ${msgs.length ? `<table class="nfmsgs">${msgs.map(i => { const x = log[i], out = x.src === name;
+      return `<tr><td>${out ? "→" : "←"}</td><td><a data-pkt="${i}">${hx(msgName(x))}</a><div class="small">${out ? "to" : "from"} ${hx(out ? x.dst : x.src)} · ${hx(x.interface)}</div></td>
+        <td>${chip(!!realFor(x))}</td><td><button data-jump="${i}" title="move the animation here">jump to</button></td></tr>`; }).join("")}</table>`
+      : `<div class="small">None yet in flow ${e.flow}.</div>`}`;
+}
+
+function fieldsHtml(e) {
+  const f = e.fields || Object.fromEntries((e.carries || []).map(k => [k, e.ids[k]]));
+  const rows = Object.entries(f).map(([k, v]) => `<tr><td>${hx(DATA.identities[k] || k.replace(/_/g, " "))}</td><td>${hx(snText(Array.isArray(v) ? v.join(", ") : v))}</td></tr>`);
+  return rows.length ? `<table>${rows.join("")}</table>` : `<div class="small">No fields.</div>`;
+}
+function treeHtml(nodes, depth = 0, openTo = 1) {                 // open down to depth openTo
+  return nodes.map(([label, kids]) => kids.length
+    ? `<details ${depth < openTo ? "open" : ""}><summary>${hx(label)}</summary>${treeHtml(kids, depth + 1, openTo)}</details>`
+    : `<div class="leaf">${hx(label)}</div>`).join("");
+}
+function realHtml(f, note) {
+  const main = f.tree.findIndex(([t]) => /^(NGAP|F1AP|GTP-U)/.test(t));
+  return `<h3>Real packet from class capture (frame #${f.frame})</h3>
+    <div class="small">${hx(f.capture)} · ${f.length} bytes · ${hx(f.protocols)}${note ? "<br>" + note : ""}<br>Identifiers and IP addresses masked.</div>
+    <div class="wstree">${f.tree.map(([t, kids], i) => `<details ${i === main ? "open" : ""}><summary><b>${hx(t)}</b></summary>${treeHtml(kids, 1, i === main ? 12 : 1)}</details>`).join("")}</div>`;
+}
+function packetHtml(e, i) {
+  if (!e || e.kind !== "msg") return `<div class="small">This step is not a message.</div>`;
+  const r = realFor(e), onF1 = r && /^RRC:|^F1AP:/.test(r.key);
+  const realNas = r && r.f.types.filter(([p]) => p === "NAS").map(([, t]) => t);
+  const note = !r ? "" : [onF1 ? "Captured on F1 (between the gNB's DU and CU), inside F1AP; on the air (Uu) the same RRC message is carried by PDCP/RLC/MAC." : "",
+    e.nas && !r.nasMatch ? `Same ${hx(r.key.split(":")[0])} message type; in the capture it carries ${hx(realNas.join(", ") || "no NAS")}, not ${hx(pretty(e.nas))}.` : ""].filter(Boolean).join(" ");
+  const nasReal = e.nas && capNasKey(e.nas);
+  return `<div class="nfh">${hx(msgName(e))}</div>
+    <div class="small">${hx(e.src)} → ${hx(e.dst)} · <a data-if="${hx(e.interface === "internal" ? "SBI" : e.interface)}">${hx(e.interface)}</a> · flow ${e.flow} · t = ${(e.t / 1000).toFixed(3)} s</div>
+    <div style="margin:6px 0">${chip(!!r)}${r ? ` <span class="small">frame #${r.f.frame}</span>` : ""}${e.nas ? ` · NAS ${hx(pretty(e.nas))}: ${chip(!!nasReal)}` : ""}</div>
+    <h3>Protocol stack</h3><div class="stack">${stackOf(e).map(p => `<span>${hx(p)}</span>`).join("")}</div>
+    <h3>Fields (simulated by the twin)</h3>${fieldsHtml(e)}
+    <div class="small">${hx(snText(e.note))}</div>
+    ${r ? realHtml(r.f, note) : `<h3>Real packet</h3><div class="small">No ${hx(e.message.replace("GTP_U", "GTP-U"))} in the class capture (it has NGAP/NAS on N2, F1AP/RRC on F1 and GTP-U on N3; no PFCP, SBI, Xn or radio-only messages): simulated only.</div>`}
+    ${i === cur ? "" : `<p><button data-jump="${i}">jump to this message</button></p>`}`;
+}
+function captureHtml(k) {
+  const f = PCAP.frames[PCAP.index[k][0]];
+  return `<div class="nfh">${hx(k.split(":")[1])} <span class="small">${hx(k.split(":")[0])}</span></div>
+    <div>${chip(true)} <span class="small">in the class capture, not in the twin's flows</span></div>${realHtml(f, "")}`;
+}
+function ifaceHtml(name) {
+  const all = new Map();
+  for (const l of Object.values(DATA.logs)) for (const x of l)
+    if (x.kind === "msg" && (x.interface === name || (name === "N1" && x.nas))) {
+      const m = name === "N1" ? x.nas : x.message;
+      if (!all.has(m)) all.set(m, name === "N1" ? !!capNasKey(x.nas) : !!realFor(x));
+    }
+  const stack = name === "Uu" ? [["RRC signalling", STACK.Uu.rrc], ["user data", STACK.Uu.data], ["broadcast", STACK.Uu.bcch]] : [["", STACK[name] || []]];
+  const extra = (CAPTURE_ONLY[name] || []).filter(k => PCAP.index[k]);
+  return `<div class="nfh">${hx(name)}</div><div class="small">${hx(IFACE_INFO[name] || "")}</div>
+    <h3>Protocol stack</h3>${stack.map(([t, s]) => `${t ? `<div class="small">${t}</div>` : ""}<div class="stack">${s.map(p => `<span>${hx(p)}</span>`).join("")}</div>`).join("")}
+    <h3>Messages on ${hx(name)} in the twin (${all.size})</h3>
+    <table>${[...all].map(([m, real]) => `<tr><td>${hx(name === "N1" ? pretty(m) : m.replace("GTP_U", "GTP-U"))}</td><td>${chip(real)}</td></tr>`).join("")}</table>
+    ${extra.length ? `<h3>Also in the class capture</h3>${extra.map(k => `<div><a data-cap="${k}">${hx(k.split(":")[1])}</a></div>`).join("")}` : ""}`;
+}
+
+// ---- make the diagram clickable
+for (const [name, g] of Object.entries(nodeEl)) { g.style.cursor = "pointer"; g.addEventListener("click", () => nfOpen(["element", name])); }
+for (const [k, t] of Object.entries(labelEl)) {
+  const iface = k === "N1" ? "N1" : t.textContent;
+  t.style.cursor = "pointer"; t.style.pointerEvents = "all"; t.addEventListener("click", () => nfOpen(["iface", iface]));
+}
+for (const d of [dot, dotLabel]) { d.style.cursor = "pointer"; d.addEventListener("click", () => nfOpen(["packet", cur])); }
+$("note").classList.add("pklink"); $("note").title = "open this message";
+$("note").addEventListener("click", () => { if (log[cur].kind === "msg") nfOpen(["packet", cur]); });
+document.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => { if (b.dataset.tab !== "mobility") nfClose(); }));
+document.addEventListener("keydown", ev => { if (ev.key === "Escape") nfClose(); });
+// twin.html#route=1&frame=40&nf=AMF opens an element; &pkt=1 opens the current message; &if=N2 an interface
+{
+  const h = decodeURIComponent(location.hash), get = k => (h.match(new RegExp("[#&]" + k + "=([^&]+)")) || [])[1];
+  setTimeout(() => { if (get("nf")) nfOpen(["element", get("nf")]); if (get("pkt")) nfOpen(["packet", cur]); if (get("if")) nfOpen(["iface", get("if")]); }, 0);
 }
 </script>
 <script>
