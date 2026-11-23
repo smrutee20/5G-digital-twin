@@ -1,5 +1,18 @@
 # 5G RAN Digital Twin for Channel-Aware Resource Allocation and Network What-If Analysis
 
+## Live demo
+
+**https://smrutee20.github.io/5G-digital-twin/**: the twin in the browser, nothing to install.
+
+- **Works there:** Twin & 5G core (the walking person and every 5G message, with the study's handover rule of 3 dB /
+  2 steps), Strategies and What-if. All of their results are precomputed and built into the page.
+- **Only locally:** Configure (antenna settings, gNB positions, UE placement) and handover rules other than 3 dB /
+  2 steps. Both re-run the simulation on the local server (section 2.10): `.venv/bin/python -m server`, then open
+  http://127.0.0.1:8765. On the live site the Configure tab says so instead.
+
+The site is `docs/index.html`, made by `.venv/bin/python tools/build_site.py` (runs `run.py`, then copies `twin.html`
+with the server calls switched off). GitHub Pages: Settings → Pages → branch `main`, folder `/docs`.
+
 ## 1. Problem Statement
 
 Evaluating alternative channel/resource allocations directly on a physical 5G network can be expensive and difficult to reproduce because performance depends on UE locations, propagation conditions and traffic load. A digital twin can provide a physics-aware representation of the radio environment and allow alternative allocations and network configurations to be evaluated before applying them to the network.

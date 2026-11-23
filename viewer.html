@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>IITGN 5G Twin</title>
+<link rel="icon" href="data:,">
 <!--
   Template for twin.html. run.py puts the 3D library (three.js, from vendor/) where LIBRARIES is, and the
   twin data and message logs where DATA is. Everything is precomputed in Python; this page only plays it back.
@@ -177,6 +178,10 @@ body:not(.heat) #signal #bar, body:not(.heat) #signal #barTicks, body:not(.heat)
 <!--LIBRARIES-->
 <script>
 const DATA = /*DATA*/null;
+// The local server (python -m server) for the Configure tab and other handover rules. tools/build_site.py sets
+// STATIC_SITE = true for the GitHub Pages copy (docs/index.html): no server there, so the page never calls one.
+const STATIC_SITE = false;
+const SERVER = STATIC_SITE ? null : location.protocol.startsWith("http") ? "" : "http://127.0.0.1:8765";
 const T = DATA.twin, SECTORS = T.sectors, NAMES = SECTORS.map(s => s.name);
 // Display names only: sectors are numbered by azimuth within each site (A60 -> A1 ...); the data and the server keep
 // the original IDs. The baseline strategies B1/B2 are shown as Fixed/Random (so they do not clash with sectors B1/B2).
@@ -383,10 +388,10 @@ function a3(rsrp, off, ttt) {
   }
   return { path, handovers };
 }
-const SERVER = location.protocol.startsWith("http") ? "" : "http://127.0.0.1:8765";
 async function timelineFor(id) {                           // the log for this route under the current rule
   const k = ruleKey(id);
   if (!LOGS[k]) {
+    if (SERVER == null) throw new Error("no server on the static site");
     const r = await fetch(SERVER + "/timeline", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ route: +id, offset_db: RULE.off, ttt_steps: RULE.ttt }) });
     if (!r.ok) throw new Error(`server: ${r.status}`);
@@ -812,7 +817,6 @@ renderer.domElement.addEventListener("pointerup", e => {
 // ======================================================================= the Configure tab
 // Choose antenna settings and place UEs; the local server (server/, python -m server) re-runs Sionna RT and returns
 // per-UE RSRP / serving sector / SINR / LOS and a coverage map. Unlike the other tabs, nothing here is precomputed.
-const API = location.protocol.startsWith("http") ? "" : "http://127.0.0.1:8765";
 const CF = {
   defaults: null, sectors: [], ue: null, rays: 1000000, threshold: -110,
   ues: [], nextId: 1, selected: null, gnb: "All", gnbXY: null, posWarn: {},
@@ -836,7 +840,8 @@ const raysText = r => (r >= 1e6 ? `${r / 1e6}e6` : `${r / 1e5}e5`) + " rays";
 
 // ---- talking to the server
 async function api(path, body) {
-  const r = await fetch(API + path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
+  if (SERVER == null) throw new Error("no server on the static site");
+  const r = await fetch(SERVER + path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
   if (!r.ok) throw new Error(`${r.status}: ${(await r.text()).slice(0, 300)}`);
   return r.json();
 }
@@ -845,11 +850,9 @@ async function cfgInit() {
   try {
     CF.defaults = await api("/defaults");
   } catch (e) {
-    $("cfgPane").innerHTML = `<h2>Configure</h2><p>This tab needs the local twin server, which re-runs Sionna RT.</p>
-      <p>Start it from the project folder:<br><code>.venv/bin/python -m server</code><br>then open
-      <a href="http://127.0.0.1:8765">http://127.0.0.1:8765</a> (or reload this page).</p>
-      <button id="cfgRetry">Try again</button><p class="cfgstatus err">${esc(e.message)}</p>`;
-    $("cfgRetry").onclick = cfgInit;
+    // no server (e.g. the GitHub Pages copy): one short message; the tab's controls are not drawn and clicks on the
+    // campus do nothing (they need CF.defaults)
+    $("cfgPane").innerHTML = `<div class="alert">Configure needs the local server (see README)</div>`;
     return;
   }
   CF.defaults.gnb_xy = CF.defaults.gnb_xy || Object.fromEntries(Object.entries(T.sites).map(([k, v]) => [k, v.xy]));
@@ -1115,7 +1118,7 @@ function rayAt(e) {
 function groundAt(e) { const p = rayAt(e).ray.intersectPlane(groundPlane, new THREE.Vector3()); return p ? [p.x, -p.z] : null; }
 let cfgPress = null, cfgDrag = null;
 stage.addEventListener("pointerdown", e => {
-  if (tab !== "configure" || e.button !== 0) return;
+  if (tab !== "configure" || e.button !== 0 || !CF.defaults) return;
   cfgPress = [e.clientX, e.clientY];
   cfgUEs.updateMatrixWorld();
   const hit = rayAt(e).intersectObjects(cfgUEs.children.filter(o => o.userData.id))[0];
@@ -1127,7 +1130,7 @@ stage.addEventListener("pointermove", e => {
   if (p && u) { u.x = +p[0].toFixed(2); u.y = +p[1].toFixed(2); cfgDrawUEs(); }
 }, true);
 addEventListener("pointerup", e => {
-  if (tab !== "configure" || !cfgPress) return;
+  if (tab !== "configure" || !cfgPress || !CF.defaults) return;
   const moved = Math.hypot(e.clientX - cfgPress[0], e.clientY - cfgPress[1]) > 5;
   cfgPress = null;
   if (cfgDrag) {                                           // finished a drag (or clicked a UE: just select it)
