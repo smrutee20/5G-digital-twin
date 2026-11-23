@@ -46,6 +46,16 @@ def sector_xy(name):
     return next(s["pos"][:2] for s in config.sectors() if s["name"] == name)
 
 
+def site_xy():
+    """Default (x, y) of each gNB: {"A": (x, y), ...} (its 3 sectors share the mast)."""
+    return {s["name"][0]: tuple(float(v) for v in s["pos"][:2]) for s in config.sectors()}
+
+
+def xy_of(s):
+    """A sector's (x, y): its own position when the request moved its gNB, otherwise config.py's."""
+    return (s["x"], s["y"]) if s.get("x") is not None else sector_xy(s["name"])
+
+
 def rows_cols(array):
     r, c = array.split("x")
     return int(r), int(c)
@@ -102,7 +112,7 @@ class Twin:
             self.scene.remove(name)
         self.scene.tx_array = planar_array(sectors[0])
         for s in sectors:
-            x, y = sector_xy(s["name"])
+            x, y = xy_of(s)
             # orientation = [direction the sector points, downtilt, 0] in radians, as in twin/scene.py
             self.scene.add(Transmitter(s["name"], position=[float(x), float(y), float(s["height_m"])],
                                        power_dbm=float(s["power_dbm"]),
@@ -176,7 +186,7 @@ class Twin:
         out["los"] = self.line_of_sight(sectors, points)
         out["los_clear"] = out["los"].copy()                                     # LOS that also misses every crown
         if self.trees is not None:
-            ant = np.array([[*sector_xy(s["name"]), s["height_m"]] for s in sectors], float)
+            ant = np.array([[*xy_of(s), s["height_m"]] for s in sectors], float)
             a = np.repeat(ant[None], U, 0).reshape(-1, 3); b = np.repeat(points[:, None], S, 1).reshape(-1, 3)
             out["los_clear"] &= (vegetation.length_in_crowns(a, b, self.trees) == 0).reshape(U, S)
         return out
@@ -184,7 +194,7 @@ class Twin:
     def line_of_sight(self, sectors, points):
         """As in twin/scene.py: a ray from each antenna to each UE; blocked if it hits a building first."""
         import mitsuba as mi
-        ant = np.array([[*sector_xy(s["name"]), s["height_m"]] for s in sectors], float)
+        ant = np.array([[*xy_of(s), s["height_m"]] for s in sectors], float)
         U, S = len(points), len(ant)
         start = np.repeat(ant[None], U, 0).reshape(-1, 3).astype(np.float32)
         d = (np.repeat(points[:, None], S, 1).reshape(-1, 3) - start).astype(np.float32)
@@ -237,7 +247,7 @@ class Twin:
                 X, Y = np.meshgrid(g["x0"] + GRID_M * (np.arange(g["nx"]) + 0.5), g["y0"] + GRID_M * (np.arange(g["ny"]) + 0.5))
                 cells = np.c_[X.ravel(), Y.ravel(), np.full(X.size, float(ue_height_m))]
                 for j, s in enumerate(gs):
-                    a = np.repeat(np.array([[*sector_xy(s["name"]), s["height_m"]]], float), len(cells), 0)
+                    a = np.repeat(np.array([[*xy_of(s), s["height_m"]]], float), len(cells), 0)
                     L = vegetation.length_in_crowns(a, cells, self.trees)
                     best[j] *= 10 ** (-vegetation.loss_db(L).reshape(g["ny"], g["nx"]) / 10)
             p_dbm = np.array([s["power_dbm"] for s in gs])[:, None, None]

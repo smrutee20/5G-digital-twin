@@ -223,6 +223,7 @@ press **Run**.
 |---|---|
 | `GET /defaults` | default gNB and UE settings, the 9 sectors, ray-count choices |
 | `GET /random_ues?n=20&seed=1` | n random outdoor UE positions |
+| `GET /check_position?x=..&y=..` | is (x, y) inside a building? (used when a gNB is moved) |
 | `POST /simulate` | sector settings + UE settings + UE list → per-UE RSRP from every sector, best beam, serving sector, SINR, LOS, and (optionally) the coverage map with its assumptions |
 
 **Defaults (today's model)**
@@ -240,7 +241,7 @@ press **Run**.
 | UE | array, pattern, polarization | 1x1, iso, V (arrays 1x2, 2x2, 4x4 available) |
 | | height | 1.5 m |
 | | noise figure | 9 dB |
-| Ray tracing | rays per sector | 2e5 (interactive); 1e6 and 4e6 selectable |
+| Ray tracing | rays per sector | 1e6; 2e5 (fast) and 4e6 selectable |
 | | bounces | 3 + diffraction |
 | Coverage | grid, threshold | 5 m, RSRP > −110 dBm (editable) |
 

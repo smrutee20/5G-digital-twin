@@ -4,6 +4,7 @@ The Configure server: a small FastAPI app on localhost around the twin's Sionna 
   GET  /             the twin page (twin.html, made by python run.py), so the Configure tab can reach this server
   GET  /defaults     the default gNB and UE settings, the 9 sectors, ray counts, grid
   GET  /random_ues   n random outdoor UE positions
+  GET  /check_position  is (x, y) inside a building? (moving a gNB)
   POST /simulate     sector settings + UE settings + UE list -> per-UE RSRP from every sector, serving sector, SINR,
                      LOS, and (optionally) the coverage map
   POST /timeline     Mobility tab: a walking route + a handover rule (A3 offset dB, time-to-trigger steps) -> the 5G
@@ -30,6 +31,7 @@ from server.cache import LRU, MapCache, config_hash
 ROOT = engine.ROOT
 SECTOR_NAMES = [s["name"] for s in engine.default_sectors()]
 RAY_CHOICES = (200_000, 1_000_000, 4_000_000)
+DEFAULT_RAYS = 1_000_000                        # the page starts at the study's 1e6; 2e5 stays as a fast option
 
 
 def _sionna_version():
@@ -48,6 +50,9 @@ class Sector(BaseModel):
     pattern: Literal["iso", "dipole", "tr38901"] = "tr38901"
     polarization: Literal["V", "H", "cross"] = "V"
     num_beams: int = Field(default=8, ge=1, le=64)
+    # the gNB's position; leave out (None) for config.py's. Set for all 3 sectors of a moved gNB.
+    x: float | None = Field(default=None, ge=engine.sc.AREA_X[0], le=engine.sc.AREA_X[1])
+    y: float | None = Field(default=None, ge=engine.sc.AREA_Y[0], le=engine.sc.AREA_Y[1])
 
     @field_validator("name")
     @classmethod
@@ -77,7 +82,7 @@ class SimulateRequest(BaseModel):
     ues: list[UE] = Field(default_factory=list, max_length=500)
     coverage: bool = True
     threshold_dbm: float = -110.0
-    rays: int = engine.INTERACTIVE_RAYS
+    rays: int = DEFAULT_RAYS
     scene: Literal["v1", "v2"] = "v1"          # v1 = the study's twin; v2 = drawings-corrected buildings + trees
 
     @field_validator("sectors")
@@ -124,10 +129,19 @@ def _ray_note(rays):
             + (" (interactive preview; the study used 1e6)" if rays < 1_000_000 else ""))
 
 
+def _sector_dict(s):
+    """The sector as a dict; x and y only when the gNB was moved, so the default settings (and their cache key)
+    stay exactly as before positions were configurable."""
+    d = s.model_dump()
+    if d["x"] is None or d["y"] is None or np.allclose((d["x"], d["y"]), engine.sector_xy(d["name"]), atol=1e-3):
+        d.pop("x"), d.pop("y")
+    return d
+
+
 def _simulate(req: SimulateRequest):
     t0 = time.time()
     tw = _twin(req.scene)
-    sectors = [s.model_dump() for s in req.sectors]
+    sectors = [_sector_dict(s) for s in req.sectors]
     ue = req.ue.model_dump()
     common = dict(sectors=sectors, rays=req.rays, seed=engine.sc.SEED, sionna=_state["version"], scene=req.scene)
     ue_key = config_hash(dict(common, ue=ue))
@@ -206,7 +220,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 @app.get("/defaults")
 async def defaults():
     return dict(gnb=engine.GNB_DEFAULT, ue=engine.UE_DEFAULT, sectors=engine.default_sectors(),
-                rays=engine.INTERACTIVE_RAYS, ray_choices=list(RAY_CHOICES), study_rays=engine.sc.RAYS_PER_SECTOR,
+                gnb_xy=engine.site_xy(), rays=DEFAULT_RAYS, ray_choices=list(RAY_CHOICES), study_rays=engine.sc.RAYS_PER_SECTOR,
                 grid_m=engine.GRID_M, threshold_dbm=-110.0, frequency_hz=engine.sc.FREQUENCY_HZ,
                 bandwidth_hz=engine.sc.BANDWIDTH_HZ, num_prb=engine.sc.NUM_PRB,
                 category="A predictive digital twin of the IITGN campus 5G radio network.",
@@ -219,6 +233,14 @@ async def random_ues(n: int = 20, seed: int = 1, scene: Literal["v1", "v2"] = "v
         raise HTTPException(422, "n must be 1..500")
     xy = await _run(lambda: _twin(scene).random_ues(n, seed))
     return dict(ues=[dict(x=round(float(x), 2), y=round(float(y), 2)) for x, y in xy])
+
+
+@app.get("/check_position")
+async def check_position(x: float, y: float, scene: Literal["v1", "v2"] = "v1"):
+    """Is (x, y) inside a building? (for moving a gNB in the Configure tab)"""
+    inside_area = engine.sc.AREA_X[0] <= x <= engine.sc.AREA_X[1] and engine.sc.AREA_Y[0] <= y <= engine.sc.AREA_Y[1]
+    roof = float(await _run(lambda: _twin(scene).height_below(np.array([[x, y]]))[0]))
+    return dict(x=x, y=y, inside_building=roof > 0.5, roof_m=round(roof, 1), inside_area=inside_area)
 
 
 @app.post("/simulate")

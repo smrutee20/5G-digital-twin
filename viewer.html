@@ -26,7 +26,7 @@ button, select { font: inherit; padding: 4px 10px; border: 1px solid var(--line)
 button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
 .group { display: flex; gap: 4px; align-items: center; }
 .setucity { margin-left: auto; display: grid; gap: 1px; text-decoration: none; color: #fff; background: var(--A); border-radius: 8px; padding: 6px 12px; font-weight: 700; }
-.setucity small { font: 500 11px ui-monospace, Menlo, Consolas, monospace; color: #ffffffcc; }
+.setucity small { font: 500 11px system-ui, -apple-system, "Segoe UI", sans-serif; color: #ffffffcc; }
 .setucity:hover { filter: brightness(1.1); }
 .small { font-size: 12px; color: var(--ink2); }
 main { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 12px; padding: 0 16px; height: 66vh; min-height: 440px; }
@@ -51,6 +51,9 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: v
 footer { margin: 12px 16px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
 #now { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
 #note { font-size: 16px; font-weight: 600; flex: 1 1 300px; }
+.flowwrap { position: relative; display: inline-flex; align-items: center; gap: 6px; }
+#noteBtn { width: 20px; height: 20px; padding: 0; border-radius: 50%; font: italic 700 12px Georgia, serif; line-height: 18px; text-align: center; }
+#notePop { position: absolute; bottom: calc(100% + 6px); left: 0; z-index: 5; width: max-content; max-width: min(460px, 80vw); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 13px; box-shadow: 0 6px 20px rgba(0, 0, 0, .15); }
 .badge { font-size: 11px; padding: 2px 8px; border-radius: 9px; color: #fff; white-space: nowrap; }
 #ids { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 4px 12px; margin-top: 8px; }
 .id { font-size: 12px; padding: 3px 6px; border-radius: 6px; border: 1px solid transparent; }
@@ -77,7 +80,7 @@ footer { margin: 12px 16px 16px; background: var(--panel); border: 1px solid var
 .tabs button:first-child { border-radius: 6px 0 0 6px; }
 .tabs button:last-child { border-radius: 0 6px 6px 0; }
 #scenario { bottom: 10px; right: 10px; line-height: 1.5; }
-#uePanel { top: 44px; left: 10px; width: 300px; }
+#uePanel { top: 54px; left: 10px; width: max-content; max-width: calc(100% - 20px); max-height: calc(100% - 64px); overflow: auto; }
 #uePanel table, .pane table { border-collapse: collapse; width: 100%; margin: 4px 0; font-size: 12px; }
 #uePanel td, .pane td, .pane th { padding: 1px 6px; text-align: right; white-space: nowrap; }
 #uePanel td:first-child, .pane td:first-child, .pane th:first-child { text-align: left; }
@@ -85,14 +88,24 @@ footer { margin: 12px 16px 16px; background: var(--panel); border: 1px solid var
 .pane td.on, .pane th.on { background: #e8f0fe; font-weight: 700; }
 .pane { padding: 10px 12px; height: 100%; overflow: auto; font-size: 13px; }
 .pane h3 { font-size: 13px; margin: 12px 0 4px; }
-#caseNote { top: 44px; left: 10px; width: 300px; }
 /* the Configure tab */
-#cfgDefaults { top: 44px; left: 10px; width: 290px; max-height: calc(100% - 150px); overflow: auto; }
+/* in this tab the 3D view takes the full width and the settings panel sits below it */
+body.cfg main { grid-template-columns: 1fr; }
+body.cfg #netSection { display: none; }
+#cfgBox { margin: 12px 16px 16px; }
+#cfgPane { height: auto; overflow: visible; }
+.cfgcols { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 3fr) minmax(0, 3fr); gap: 8px 20px; align-items: start; }
+.cfgcols > div > h3:first-child, .cfgres > div > h3:first-child { margin-top: 0; }
+.cfgres { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 8px 20px; align-items: start; margin-top: 8px; }
+@media (max-width: 900px) { .cfgcols, .cfgres { grid-template-columns: 1fr; } }
+#cfgCov { font-weight: 700; margin: 6px 0; } #cfgCov input { width: 64px; font: inherit; padding: 1px 4px; border: 1px solid var(--line); border-radius: 6px; }
+#cfgDefaults { position: fixed; z-index: 10; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 460px; max-width: calc(100% - 32px);
+  max-height: calc(100% - 32px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 12px; box-shadow: 0 8px 30px rgba(0, 0, 0, .2); }
 #cfgDefaults table { border-collapse: collapse; width: 100%; }
 #cfgDefaults td { padding: 1px 4px; vertical-align: top; }
 #cfgDefaults td.changed { background: #fff3cd; font-weight: 700; }
-#cfgCoverage { bottom: 10px; left: 10px; width: 420px; max-width: calc(100% - 20px); }
-#cfgCoverage .big { font-size: 15px; font-weight: 700; }
+#cfgDefClose { float: right; padding: 0 8px; }
+.cfgform.cfgaz { grid-template-columns: repeat(3, auto minmax(0, 1fr)); }
 .cfgform { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 4px 8px; align-items: center; margin: 6px 0; }
 .cfgform input, .cfgform select { font: inherit; width: 100%; min-width: 0; padding: 3px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); }
 .cfgrow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; }
@@ -102,6 +115,12 @@ footer { margin: 12px 16px 16px; background: var(--panel); border: 1px solid var
 .cfgstatus.err { color: var(--hl); font-weight: 600; }
 #cfgTable tr { cursor: pointer; }
 #cfgTable tr.sel td { background: #fdecec; }
+.alert { display: inline-block; font-size: 12px; font-weight: 600; color: #1e40af; background: #eef4ff; border: 1px solid #bfd3fb; border-radius: 6px; padding: 4px 10px; }
+#uePanel.empty { width: auto; padding: 0; border: 0; background: none; }
+.cfggrp { display: grid; grid-template-columns: 82px 1fr; gap: 6px 8px; align-items: center; margin: 4px 0; }
+.cfggrp > span { font-size: 12px; color: var(--ink2); font-weight: 600; }
+.cfggrp > div { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.cfggrp input[type=number] { width: 64px; font: inherit; padding: 3px 6px; border: 1px solid var(--line); border-radius: 6px; }
 button.primary { background: var(--A); color: #fff; border-color: var(--A); font-weight: 600; }
 /* campus layers */
 #infoBtn { position: absolute; top: 10px; right: 10px; padding: 3px 12px; font-size: 13px; }
@@ -117,11 +136,10 @@ body:not(.heat) #signal #bar, body:not(.heat) #signal #barTicks, body:not(.heat)
 <body>
 <header>
   <h1>IIT Gandhinagar 5G digital twin</h1>
-  <span class="tabs"><button data-tab="mobility" aria-pressed="true">Mobility + 5G core</button><button data-tab="strategies">Strategies</button><button data-tab="whatif">What-if</button><button data-tab="configure">Configure</button></span>
+  <span class="tabs"><button data-tab="mobility" aria-pressed="true">Twin &amp; 5G core</button><button data-tab="strategies">Strategies</button><button data-tab="whatif">What-if</button><button data-tab="configure">Configure</button></span>
   <span class="group" id="mobControls">
   <label class="group small">Route <select id="route"></select></label>
   <button id="play">▶ Play</button>
-  <button id="next">Next step</button>
   <label class="group small">Speed <select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
   <span class="group small" id="ruleCtl" title="Event A3: hand over when another sector is stronger than the serving one by the offset, for the time-to-trigger. The study used 3 dB / 2 steps.">Handover rule
     <label class="group">offset <input type="number" id="a3off" min="0" max="20" step="0.5" value="3"> dB</label>
@@ -138,22 +156,21 @@ body:not(.heat) #signal #bar, body:not(.heat) #signal #barTicks, body:not(.heat)
     <div class="overlay" id="twinTitle"><h2>Digital twin: IITGN campus (ray-traced)</h2></div>
     <div class="overlay" id="signal"></div>
     <div class="overlay" id="uePanel" hidden></div>
-    <div class="overlay" id="caseNote" hidden></div>
     <div class="overlay small" id="scenario"></div>
-    <div class="overlay" id="cfgDefaults" hidden></div>
-    <div class="overlay" id="cfgCoverage" hidden></div>
   </section>
-  <section>
-    <div id="coreTitle"><h2>5G network: phone, gNBs and core</h2></div>
+  <section id="netSection">
+    <div id="coreTitle"><h2>5G Network Visualiser</h2></div>
     <svg id="net" viewBox="0 0 680 470" preserveAspectRatio="xMidYMid meet"></svg>
     <div class="pane" id="stratPane" hidden></div>
     <div class="pane" id="whatifPane" hidden></div>
-    <div class="pane" id="cfgPane" hidden></div>
   </section>
 </main>
+<section id="cfgBox" hidden><div class="pane" id="cfgPane"></div></section>
+<div id="cfgDefaults" role="dialog" aria-label="Defaults" hidden></div>
 
 <footer>
-  <div id="now"><span class="badge" id="flow"></span><span id="note"></span><span class="small" id="time"></span></div>
+  <div id="now"><span class="flowwrap"><span class="badge" id="flow"></span><button id="noteBtn" aria-expanded="false" title="what is happening">i</button>
+    <div id="notePop" role="tooltip" hidden></div></span><span id="note"></span><span class="small" id="time"></span></div>
   <div id="ids"></div>
 </footer>
 
@@ -161,6 +178,13 @@ body:not(.heat) #signal #bar, body:not(.heat) #signal #barTicks, body:not(.heat)
 <script>
 const DATA = /*DATA*/null;
 const T = DATA.twin, SECTORS = T.sectors, NAMES = SECTORS.map(s => s.name);
+// Display names only: sectors are numbered by azimuth within each site (A60 -> A1 ...); the data and the server keep
+// the original IDs. The baseline strategies B1/B2 are shown as Fixed/Random (so they do not clash with sectors B1/B2).
+const SECTOR_LABEL = { A60: "A1", A180: "A2", A300: "A3", B105: "B1", B225: "B2", B345: "B3", C53: "C1", C173: "C2", C293: "C3" };
+const sn = n => SECTOR_LABEL[n] || n;
+const snText = t => String(t ?? "").replace(/\b(A60|A180|A300|B105|B225|B345|C53|C173|C293)\b/g, m => SECTOR_LABEL[m]);
+const STRATEGY_LABEL = { B1: "Fixed", B2: "Random" };
+const stn = n => STRATEGY_LABEL[n] || n;
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const siteColor = site => css(`--${site}`);
 const pretty = s => s.replace(/([a-z])([A-Z])/g, "$1 $2");
@@ -224,7 +248,7 @@ for (const s of SECTORS) {
   const a = s.az * Math.PI / 180, t = s.tilt * Math.PI / 180;
   const dir = V(Math.cos(a) * Math.cos(t), Math.sin(a) * Math.cos(t), -Math.sin(t)).normalize();
   scene.add(new THREE.ArrowHelper(dir, V(...s.pos), 60, new THREE.Color(siteColor(s.site)).getHex(), 14, 9));
-  const l = label(s.name, siteColor(s.site), 26); l.position.copy(V(...s.pos).add(dir.clone().multiplyScalar(80))); scene.add(l);
+  const l = label(sn(s.name), siteColor(s.site), 26); l.position.copy(V(...s.pos).add(dir.clone().multiplyScalar(80))); scene.add(l);
 }
 
 // the walking person with the phone, its route (dots on the road), and the line from the phone to its serving sector.
@@ -332,9 +356,7 @@ for (const [k, name] of Object.entries(DATA.identities)) {
 let route, log, cur = 0, playing = false, timer = null, anim = null, view = "overview";
 const routeSel = document.getElementById("route");
 for (const r of T.routes) {
-  const ho = DATA.logs[r.id].filter(e => e.message === "HandoverRequest").length;
-  routeSel.add(new Option(r.name ? `${r.name} · ${Math.round(r.length_m)} m · ${ho} Xn handover${ho === 1 ? "" : "s"}`
-                                 : `Route ${r.id} · ${ho} handover${ho === 1 ? "" : "s"}`, r.id));
+  routeSel.add(new Option(r.name || `Route ${r.id}`, r.id));
 }
 const speed = () => +document.getElementById("speed").value;
 const duration = e => (e.kind === "step" ? 170 : e.kind === "info" ? 1500 : e.flow === 4 ? 320 : 900) / speed();
@@ -396,8 +418,8 @@ function drawRoute() {                                      // dots coloured by 
   }
   const xn = A.handovers.filter(h => h.from[0] !== h.to[0]).length, n = A.handovers.length;
   const c = document.getElementById("a3count");
-  c.className = ""; c.textContent = `→ ${n} handover${n === 1 ? "" : "s"} (${xn} Xn)`;
-  c.title = A.handovers.map(h => `${h.from}→${h.to} at ${h.step * DATA.step_m} m`).join(", ") || "no handover";
+  c.className = ""; c.textContent = "";
+  c.title = `${n} handover${n === 1 ? "" : "s"} (${xn} Xn): ` + A.handovers.map(h => `${sn(h.from)}→${sn(h.to)} at ${h.step * DATA.step_m} m`).join(", ") || "no handover";
   return A;
 }
 
@@ -411,7 +433,7 @@ async function setRoute(id, step = 0) {
   catch (err) {
     if (token !== routeToken) return;
     const c = document.getElementById("a3count");
-    c.className = "warn"; c.textContent += " · messages need the server (python -m server); they still follow 3 dB / 2 steps";
+    c.className = "warn"; c.textContent = "needs server"; c.title = "messages need the server (python -m server); they still follow 3 dB / 2 steps";
   }
   WALK.shownIndex = -1; WALK.servingShown = null;
   cur = Math.max(0, log.findIndex(e => e.step >= step));
@@ -449,14 +471,14 @@ function showTwin(e) {
   if (s) { servLine.material.color.set(siteColor(s.site)); halo.material.color.set(siteColor(s.site)); walker.userData.screen.material.color.set(siteColor(s.site)); }
   // small panel: the 3 strongest sectors here, and the serving one
   const rs = route.rsrp[k], order = NAMES.map((n, i) => i).sort((a, b) => rs[b] - rs[a]).slice(0, 3);
-  const row = i => `<tr><td><span class="dot" style="background:${siteColor(SECTORS[i].site)}"></span>${NAMES[i]}</td>
+  const row = i => `<tr><td><span class="dot" style="background:${siteColor(SECTORS[i].site)}"></span>${sn(NAMES[i])}</td>
     <td class="v">${rs[i].toFixed(1)} dBm</td><td>${!route.los[k][i] ? "blocked" : route.los_clear && !route.los_clear[k][i] ? "line of sight through trees" : "line of sight"}${route.traced[k][i] ? "" : " · 3GPP fill"}</td></tr>`;
   const si = NAMES.indexOf(e.serving);
   const [lo, hi] = T.rsrp_map.dbm;
   document.getElementById("signal").innerHTML =
     `<b>Strongest sectors here</b> <span class="small">(step ${k} · ${k * DATA.step_m} m)</span>
      <table>${order.map(row).join("")}</table>
-     <b>Serving sector:</b> ${si < 0 ? "none yet" : `${e.serving} on gNB-${e.serving[0]} · ${rs[si].toFixed(1)} dBm`}
+     <b>Serving sector:</b> ${si < 0 ? "none yet" : `${sn(e.serving)} on gNB-${e.serving[0]} · ${rs[si].toFixed(1)} dBm`}
      <div class="small">${e.ue_state === "off" ? "phone switching on" : e.ue_state}</div>
      <div id="bar" style="background:linear-gradient(90deg,${T.rsrp_map.colors.join(",")})"></div>
      <div id="barTicks" class="small"><span>${lo}</span><span>RSRP map, best sector (dBm)</span><span>${hi}</span></div>`;
@@ -482,7 +504,8 @@ function showCore(e) {
 function showBottom(e) {
   const f = document.getElementById("flow");
   f.textContent = `Flow ${e.flow}: ${DATA.flows[e.flow]}`; f.style.background = css(`--f${e.flow}`);
-  document.getElementById("note").textContent = e.kind === "msg" ? `${msgName(e)} (${e.interface}): ${e.note}` : e.note;
+  document.getElementById("note").textContent = e.kind === "msg" ? `${msgName(e)} (${e.interface})` : "";
+  document.getElementById("notePop").textContent = snText(e.note);
   document.getElementById("time").textContent = `t = ${(e.t / 1000).toFixed(3)} s`;
   for (const [k, d] of Object.entries(idEl)) {
     const v = e.ids[k];
@@ -551,15 +574,21 @@ function setView(v) {
 
 // ======================================================================= controls
 document.getElementById("play").onclick = () => go(cur >= log.length - 1 ? 0 : cur, !playing);
-document.getElementById("next").onclick = () => go(cur + 1, false);
 routeSel.onchange = () => setRoute(+routeSel.value);
+{ // the (i) button next to the flow label: the sentence about the current step, as a small popup
+  const btn = document.getElementById("noteBtn"), pop = document.getElementById("notePop");
+  const open = on => { pop.hidden = !on; btn.setAttribute("aria-expanded", on); btn.setAttribute("aria-pressed", on); };
+  btn.onclick = ev => { ev.stopPropagation(); open(pop.hidden); };
+  document.addEventListener("click", ev => { if (!pop.contains(ev.target)) open(false); });
+  document.addEventListener("keydown", ev => { if (ev.key === "Escape") open(false); });
+}
 document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => setView(b.dataset.view));
 document.addEventListener("keydown", ev => {
   if (ev.key === " " && ev.target.tagName !== "SELECT") { ev.preventDefault(); document.getElementById("play").click(); }
 });
 
 function resize() {                                         // keep the scene centred in the space right of the panel
-  const w = stage.clientWidth, h = stage.clientHeight, P = w > 700 ? 290 : 0;
+  const w = stage.clientWidth, h = stage.clientHeight, P = w > 700 && !document.body.classList.contains("cfg") ? 290 : 0;
   renderer.setSize(w, h); camera.aspect = (w + P) / h;
   if (P) camera.setViewOffset(w + P, h, 0, 0, w, h); else camera.clearViewOffset();
   camera.updateProjectionMatrix();
@@ -677,13 +706,11 @@ function showStrategy() {
   const st = S.strategies[strategy];
   drawUEs(S.ue_xy, st.serving, selectedUE);
   const names = Object.keys(S.kpis), metrics = Object.keys(S.kpis.B1);
-  $("stratPane").innerHTML = `<h2>Strategies: one placement of ${S.ue_xy.length} UEs</h2>
-    <div class="group" style="margin:8px 0">${names.map(n => `<button data-strategy="${n}" aria-pressed="${n === strategy}">${n}</button>`).join("")}</div>
-    <div class="small">${DESCRIBE[strategy]} The line from each UE goes to its serving sector. Click a UE on the map.</div>
-    <h3>PRBs used by each sector (${strategy})</h3><canvas id="prbGrid"></canvas>
-    <div class="small">Each row is a sector, each column one of the 273 PRBs; coloured = the sector transmits there${selectedUE == null ? "" : ", red = UE " + (selectedUE + 1)}. Where two rows are coloured in the same column, those sectors interfere.</div>
-    <h3>Results over ${S.drops} placements of ${S.ues_per_drop} UEs (task 6), mean ± 95 % confidence interval</h3>
-    <table><tr><th></th>${names.map(n => `<th class="${n === strategy ? "on" : ""}">${n}</th>`).join("")}</tr>
+  $("stratPane").innerHTML = `<h2>Strategies</h2>
+    <div class="group" style="margin:8px 0">${names.map(n => `<button data-strategy="${n}" aria-pressed="${n === strategy}">${stn(n)}</button>`).join("")}</div>
+    <h3>PRBs used by each sector (${stn(strategy)})</h3><canvas id="prbGrid"></canvas>
+    <h3>Results (${S.drops} placements)</h3>
+    <table><tr><th></th>${names.map(n => `<th class="${n === strategy ? "on" : ""}">${stn(n)}</th>`).join("")}</tr>
     ${metrics.map(k => `<tr><td>${k}</td>${names.map(n => `<td class="${n === strategy ? "on" : ""}">${fmt(S.kpis[n][k][0])} ± ${fmt(S.kpis[n][k][1])}</td>`).join("")}</tr>`).join("")}</table>`;
   document.querySelectorAll("[data-strategy]").forEach(b => b.onclick = () => { strategy = b.dataset.strategy; showStrategy(); });
   drawPrbGrid(st.prb_plan);
@@ -696,7 +723,7 @@ function drawPrbGrid(plan) {
   const g = c.getContext("2d");
   g.font = "11px system-ui, sans-serif"; g.textBaseline = "middle";
   plan.forEach((row, s) => {
-    g.fillStyle = css("--ink2"); g.fillText(NAMES[s], 0, s * h + h / 2 + 1);
+    g.fillStyle = css("--ink2"); g.fillText(sn(NAMES[s]), 0, s * h + h / 2 + 1);
     row.forEach((ue, k) => {
       g.fillStyle = ue < 0 ? "#eef0f4" : ue === selectedUE ? "#dc2626" : siteColor(NAMES[s][0]);
       g.fillRect(left + k * w, s * h + 1, w, h - 2);
@@ -705,15 +732,16 @@ function drawPrbGrid(plan) {
 }
 function showUE() {
   const S = TASKS.strategies, u = selectedUE, panel = $("uePanel");
-  if (u == null) { panel.innerHTML = "<b>Click a UE</b> on the map to see what it measures from each sector."; return; }
+  panel.classList.toggle("empty", u == null);
+  if (u == null) { panel.innerHTML = `<div class="alert">Select a UE</div>`; return; }
   const order = NAMES.map((n, i) => i).sort((a, b) => S.rsrp_dbm[u][b] - S.rsrp_dbm[u][a]);
   const serving = S.strategies[strategy].serving[u];
-  panel.innerHTML = `<b>UE ${u + 1}</b> <span class="small">at (${S.ue_xy[u].map(v => v.toFixed(0)).join(", ")}) m</span>
-    <table><tr><td><b>sector</b></td><td><b>RSRP</b></td><td><b>SINR if it served</b></td><td><b>path</b></td></tr>
-    ${order.map(i => `<tr style="${i === serving ? "font-weight:700" : ""}"><td><span class="dot" style="background:${siteColor(NAMES[i][0])}"></span>${NAMES[i]}${i === serving ? " ← " + strategy : ""}</td>
+  panel.innerHTML = `<b>UE ${u + 1}</b>
+    <table><tr><td><b>sector</b></td><td><b>RSRP</b></td><td><b>SINR</b></td><td><b>path</b></td></tr>
+    ${order.map(i => `<tr style="${i === serving ? "font-weight:700" : ""}"><td><span class="dot" style="background:${siteColor(NAMES[i][0])}"></span>${sn(NAMES[i])}${i === serving ? " ← " + stn(strategy) : ""}</td>
       <td>${S.rsrp_dbm[u][i] < -250 ? "no path" : fmt(S.rsrp_dbm[u][i]) + " dBm"}</td><td>${S.rsrp_dbm[u][i] < -250 ? "–" : fmt(S.sinr_db[u][i]) + " dB"}</td>
-      <td>${S.los[u][i] ? "line of sight" : "blocked"}</td></tr>`).join("")}</table>
-    ${Object.keys(S.strategies).map(n => `${n}: ${NAMES[S.strategies[n].serving[u]]}, ${fmt(S.strategies[n].throughput_mbps[u])} Mbps`).join("<br>")}`;
+      <td>${S.los[u][i] ? "LOS" : "NLOS"}</td></tr>`).join("")}</table>
+    ${Object.keys(S.strategies).map(n => `${stn(n)}: ${sn(NAMES[S.strategies[n].serving[u]])}, ${fmt(S.strategies[n].throughput_mbps[u])} Mbps`).join("<br>")}`;
 }
 
 // ---- the What-if tab
@@ -721,22 +749,15 @@ let whatifCase = "site B off";
 function showCase() {
   const W = TASKS.whatif;
   if (!W) { $("whatifPane").innerHTML = "Run the full study (tasks 1, 6 and 7) to fill this tab."; return; }
-  const names = Object.keys(W.cases), c = W.cases[whatifCase], now = W.cases.now;
+  const names = Object.keys(W.cases), c = W.cases[whatifCase];
   drawUEs(c.ue_xy, c.serving, null);
   siteOff.visible = !c.active.every(Boolean);
   const metrics = ["mean throughput (Mbps)", "5th-percentile throughput (Mbps)", "mean SINR (dB)", "PRB utilisation (%)"];
-  $("caseNote").innerHTML = `<b>What-if: ${whatifCase}</b><br>${c.ue_xy.length} UEs; the line from each UE goes to the sector the twin serves it from.`;
-  $("whatifPane").innerHTML = `<h2>What-if: predict before applying a change</h2>
-    <div class="group" style="margin:8px 0">${names.map(n => `<button data-case="${n}" aria-pressed="${n === whatifCase}">${n}</button>`).join("")}</div>
-    <div class="small">The twin predicts the result of the change on its own ray-traced channel. ${W.what_actual_is} (task 7)</div>
-    <h3>${whatifCase}</h3>
-    <table><tr><th></th><th>predicted</th><th>actual</th><th>difference</th></tr>
-    ${metrics.map(k => `<tr><td>${k}</td><td>${fmt(c.predicted[k])}</td><td>${fmt(c.actual[k])}</td><td>${fmt(c.predicted[k] - c.actual[k])}</td></tr>`).join("")}</table>
-    <h3>Mean throughput (Mbps) in every case</h3>
-    <table><tr><th></th><th>predicted</th><th>actual</th><th>predicted change from "now"</th><th>actual change</th></tr>
-    ${names.map(n => { const x = W.cases[n].predicted["mean throughput (Mbps)"], y = W.cases[n].actual["mean throughput (Mbps)"];
-      return `<tr><td class="${n === whatifCase ? "on" : ""}">${n}</td><td>${fmt(x)}</td><td>${fmt(y)}</td>
-        <td>${fmt(x - now.predicted["mean throughput (Mbps)"])}</td><td>${fmt(y - now.actual["mean throughput (Mbps)"])}</td></tr>`; }).join("")}</table>`;
+  const label = n => ({ now: "current", "UEs moved ~30 m": "UEs moved" })[n] || n;
+  $("whatifPane").innerHTML = `<h2>What-if: twin prediction</h2>
+    <div class="group" style="margin:8px 0">${names.map(n => `<button data-case="${n}" aria-pressed="${n === whatifCase}">${label(n)}</button>`).join("")}</div>
+    <table><tr><th></th>${names.map(n => `<th class="${n === whatifCase ? "on" : ""}">${label(n)}</th>`).join("")}</tr>
+    ${metrics.map(k => `<tr><td>${k}</td>${names.map(n => `<td class="${n === whatifCase ? "on" : ""}">${fmt(W.cases[n].predicted[k])}</td>`).join("")}</tr>`).join("")}</table>`;
   document.querySelectorAll("[data-case]").forEach(b => b.onclick = () => { whatifCase = b.dataset.case; showCase(); });
 }
 
@@ -753,7 +774,7 @@ function setTab(t) {
   [$("mobControls"), $("signal"), $("coreTitle"), $("net"), document.querySelector("footer")].forEach(el => show(el, mob));
   document.querySelector('[data-view="follow"]').disabled = !mob;
   [$("stratPane"), $("uePanel")].forEach(el => show(el, t === "strategies"));
-  [$("whatifPane"), $("caseNote")].forEach(el => show(el, t === "whatif"));
+  show($("whatifPane"), t === "whatif");
   if (mob) { go(cur, false); setView(view); return; }
   if (t === "strategies") { showStrategy(); frameCamera(TASKS.strategies ? TASKS.strategies.ue_xy : []); }
   if (t === "whatif") { showCase(); frameCamera(TASKS.whatif ? TASKS.whatif.cases[whatifCase].ue_xy : []); }
@@ -793,8 +814,8 @@ renderer.domElement.addEventListener("pointerup", e => {
 // per-UE RSRP / serving sector / SINR / LOS and a coverage map. Unlike the other tabs, nothing here is precomputed.
 const API = location.protocol.startsWith("http") ? "" : "http://127.0.0.1:8765";
 const CF = {
-  defaults: null, sectors: [], ue: null, rays: 200000, threshold: -110,
-  ues: [], nextId: 1, selected: null, sector: "A60", applyAll: false,
+  defaults: null, sectors: [], ue: null, rays: 1000000, threshold: -110,
+  ues: [], nextId: 1, selected: null, gnb: "All", gnbXY: null, posWarn: {},
   applied: null,          // the settings of the last Run (what the coverage map and UE numbers were computed with)
   result: null, coverage: null, busy: false, queued: false, dirty: false, status: "", statusKind: "",
 };
@@ -831,7 +852,8 @@ async function cfgInit() {
     $("cfgRetry").onclick = cfgInit;
     return;
   }
-  CF.sectors = clone(CF.defaults.sectors); CF.ue = clone(CF.defaults.ue);
+  CF.defaults.gnb_xy = CF.defaults.gnb_xy || Object.fromEntries(Object.entries(T.sites).map(([k, v]) => [k, v.xy]));
+  CF.sectors = clone(CF.defaults.sectors); CF.ue = clone(CF.defaults.ue); CF.gnbXY = clone(CF.defaults.gnb_xy);
   CF.rays = CF.defaults.rays; CF.threshold = CF.defaults.threshold_dbm;
   cfgDrawPane(); cfgDrawArrows(); cfgDrawDefaults();
   run(true);
@@ -841,21 +863,20 @@ async function cfgInit() {
 async function run(withCoverage) {
   if (!CF.defaults) return;
   if (withCoverage) {
-    CF.applied = { sectors: clone(CF.sectors), ue: clone(CF.ue), rays: CF.rays, scene: twinScene() }; CF.dirty = false;
+    CF.applied = { sectors: sectorsForRun(), ue: clone(CF.ue), rays: CF.rays, scene: twinScene() }; CF.dirty = false;
     if ($("cfgDirty")) $("cfgDirty").hidden = true;
   }
   if (!CF.applied) return;
   if (CF.busy) { CF.queued = CF.queued === "cov" || withCoverage ? "cov" : "ue"; return; }
   CF.busy = true;
   const sent = CF.applied;
-  setStatus(withCoverage ? "Ray tracing the coverage map and the UEs …" : "Ray tracing the UEs …");
+  setStatus("Running …");
   try {
     const res = await api("/simulate", { ...CF.applied, ues: CF.ues.map(u => ({ id: u.id, x: u.x, y: u.y })),
                                          coverage: withCoverage, threshold_dbm: CF.threshold });
     CF.result = res;
     if (res.coverage) CF.coverage = { ...res.coverage, rays: sent.rays };
-    setStatus(`Done in ${res.elapsed_s.toFixed(1)} s (cache ${res.cache}) · ${raysText(res.rays)}` +
-              (res.rays < CF.defaults.study_rays ? " · preview: fewer rays than the study, see the note under the coverage" : ""), "");
+    setStatus("", "");
   } catch (e) { setStatus("Server error: " + e.message, "err"); }
   CF.busy = false;
   cfgDrawResults();
@@ -867,47 +888,63 @@ function setStatus(text, kind = "") { CF.status = text; CF.statusKind = kind; co
 // ---- the right pane: sector and UE settings, buttons, the UE table
 function opts(list, v) { return list.map(o => `<option ${String(o) === String(v) ? "selected" : ""}>${o}</option>`).join(""); }
 function cfgDrawPane() {
-  const s = CF.sectors.find(x => x.name === CF.sector), u = CF.ue;
-  $("cfgPane").innerHTML = `<h2>Configure: antenna settings and UEs</h2>
-    <div class="small">${esc(CF.defaults.category)} Change the settings, press <b>Run</b>; click the campus to add a UE, drag to move, select + Delete to remove.</div>
-    <h3>gNB sector <select id="cfSector">${opts(CF.sectors.map(x => x.name), CF.sector)}</select>
-      <label class="small"><input type="checkbox" id="cfAll" ${CF.applyAll ? "checked" : ""}> apply to all sectors (not azimuth)</label></h3>
-    <div class="cfgform">
-      <label>Array</label><select data-g="array">${opts(["1x1", "4x4", "8x8", "16x16"], s.array)}</select>
-      <label>Pattern</label><select data-g="pattern">${opts(["iso", "dipole", "tr38901"], s.pattern)}</select>
-      <label>Polarization</label><select data-g="polarization">${opts(["V", "H", "cross"], s.polarization)}</select>
-      <label>Power (dBm)</label><input data-g="power_dbm" type="number" step="1" value="${s.power_dbm}">
-      <label>Azimuth (°)</label><input data-g="azimuth_deg" type="number" step="1" value="${s.azimuth_deg}">
-      <label>Downtilt (°)</label><input data-g="downtilt_deg" type="number" step="0.5" value="${s.downtilt_deg}">
-      <label>Height (m)</label><input data-g="height_m" type="number" step="1" value="${s.height_m}">
-      <label>SSB beams</label><input data-g="num_beams" type="number" min="1" max="64" step="1" value="${s.num_beams}">
+  const u = CF.ue, all = CF.gnb === "All", targets = gnbSectors();
+  const same = k => { const v = [...new Set(targets.map(x => String(x[k])))]; return v.length === 1 ? v[0] : null; };
+  const num = (k, step) => { const v = same(k); return `<input data-g="${k}" type="number" step="${step}" ${v == null ? 'placeholder="mixed"' : `value="${v}"`}>`; };
+  const sel = (k, list) => { const v = same(k); return `<select data-g="${k}">${v == null ? '<option value="" selected>mixed</option>' : ""}${opts(list, v)}</select>`; };
+  $("cfgPane").innerHTML = `<div class="cfgcols">
+    <div><h3>gNB <select id="cfGnb">${["All", "A", "B", "C"].map(g => `<option value="${g}" ${g === CF.gnb ? "selected" : ""}>${g === "All" ? "All gNBs" : "gNB-" + g}</option>`).join("")}</select></h3>
+      <div class="cfgform">
+        <label>x (m)</label><input data-p="0" type="number" step="1" ${all ? 'disabled placeholder="per gNB"' : `value="${CF.gnbXY[CF.gnb][0]}"`}>
+        <label>y (m)</label><input data-p="1" type="number" step="1" ${all ? 'disabled placeholder="per gNB"' : `value="${CF.gnbXY[CF.gnb][1]}"`}>
+        <label>Height (m)</label>${num("height_m", 1)}
+        <label>Power (dBm)</label>${num("power_dbm", 1)}
+        <label>Tilt (°)</label>${num("downtilt_deg", 0.5)}
+        <label>Beams</label>${num("num_beams", 1)}
+        <label>Array</label>${sel("array", ["1x1", "4x4", "8x8", "16x16"])}
+        <label>Pattern</label>${sel("pattern", ["iso", "dipole", "tr38901"])}
+        <label>Pol.</label>${sel("polarization", ["V", "H", "cross"])}
+      </div>
+      <div class="cfgform cfgaz">${targets.map(x => `<label>${sn(x.name)} az (°)</label><input data-az="${x.name}" type="number" step="1" value="${x.azimuth_deg}">`).join("")}</div>
+      <div id="cfgPosWarn" class="cfgstatus warn"></div></div>
+    <div><h3>UE</h3>
+      <div class="cfgform">
+        <label>Pattern</label><select data-u="pattern">${opts(["iso", "dipole", "tr38901"], u.pattern)}</select>
+        <label>Array</label><select data-u="array">${opts(["1x1", "1x2", "2x2", "4x4"], u.array)}</select>
+        <label>Pol.</label><select data-u="polarization">${opts(["V", "H", "cross"], u.polarization)}</select>
+        <label>Height (m)</label><input data-u="height_m" type="number" step="0.5" value="${u.height_m}">
+        <label>NF (dB)</label><input data-u="noise_figure_db" type="number" step="0.5" value="${u.noise_figure_db}">
+      </div></div>
+    <div><h3>Run</h3>
+      <div class="cfggrp"><span>Simulation</span><div>
+        <select id="cfRays">${CF.defaults.ray_choices.map(r => `<option value="${r}" ${r === CF.rays ? "selected" : ""}>${raysText(r)}</option>`).join("")}</select>
+        <button class="primary" id="cfRun">Run</button></div>
+        <span>UEs</span><div>
+        <input type="number" id="cfN" value="20" min="1" max="500" title="number of random UEs"><button id="cfRandom">Random UEs</button><button id="cfClear">Clear</button></div>
+        <span>Settings</span><div><button id="cfDefaults">Defaults</button><button id="cfReset">Reset</button></div>
+      </div>
+      <div id="cfgCov"></div>
+      <div id="cfgStatus" class="cfgstatus"></div>
+      <div id="cfgDirty" class="cfgstatus warn" ${CF.dirty ? "" : "hidden"}>Changed: press Run</div>
     </div>
-    <div class="small">Power is the sector total, split evenly across the elements (0.5 λ spacing). Beams: N fixed DFT beams across the 120° sector; RSRP = best beam.</div>
-    <h3>UE</h3>
-    <div class="cfgform">
-      <label>Pattern</label><select data-u="pattern">${opts(["iso", "dipole", "tr38901"], u.pattern)}</select>
-      <label>Array</label><select data-u="array">${opts(["1x1", "1x2", "2x2", "4x4"], u.array)}</select>
-      <label>Polarization</label><select data-u="polarization">${opts(["V", "H", "cross"], u.polarization)}</select>
-      <label>Height (m)</label><input data-u="height_m" type="number" step="0.5" value="${u.height_m}">
-      <label>Noise fig. (dB)</label><input data-u="noise_figure_db" type="number" step="0.5" value="${u.noise_figure_db}">
-      <label>Rays</label><select id="cfRays">${CF.defaults.ray_choices.map(r => `<option value="${r}" ${r === CF.rays ? "selected" : ""}>${raysText(r)}${r === CF.defaults.rays ? " (interactive)" : r === CF.defaults.study_rays ? " (study)" : ""}</option>`).join("")}</select>
-    </div>
-    <div class="cfgrow">
-      <button class="primary" id="cfRun">Run</button>
-      <label class="small">Random <input type="number" id="cfN" value="20" min="1" max="500"> UEs</label><button id="cfRandom">Place</button>
-      <button id="cfClear">Clear UEs</button><button id="cfReset">Reset to defaults</button>
-    </div>
-    <div id="cfgStatus" class="cfgstatus"></div>
-    <div id="cfgDirty" class="cfgstatus warn" ${CF.dirty ? "" : "hidden"}>Settings changed: press Run. Until then the numbers shown use the previous settings.</div>
-    <div id="cfgUETable"></div><div id="cfgUEDetail"></div>`;
-  $("cfSector").onchange = e => { CF.sector = e.target.value; cfgDrawPane(); cfgDrawUEs(); };
-  $("cfAll").onchange = e => { CF.applyAll = e.target.checked; };
-  document.querySelectorAll("#cfgPane [data-g]").forEach(i => i.onchange = () => {
+  </div>
+  <div class="cfgres"><div id="cfgUETable"></div><div id="cfgUEDetail"></div></div>`;
+  $("cfGnb").onchange = e => { CF.gnb = e.target.value; cfgDrawPane(); };
+  document.querySelectorAll("#cfgPane [data-g]").forEach(i => i.onchange = () => {      // gNB level: its 3 sectors
+    if (i.value === "") return;
     const k = i.dataset.g, v = i.type === "number" ? +i.value : i.value;
-    const targets = CF.applyAll && k !== "azimuth_deg" ? CF.sectors : CF.sectors.filter(x => x.name === CF.sector);
-    targets.forEach(x => x[k] = v);
+    gnbSectors().forEach(x => x[k] = v);
     markDirty();
   });
+  document.querySelectorAll("#cfgPane [data-az]").forEach(i => i.onchange = () => {     // sector level: azimuth
+    if (i.value === "") return;
+    CF.sectors.find(x => x.name === i.dataset.az).azimuth_deg = +i.value; markDirty();
+  });
+  document.querySelectorAll("#cfgPane [data-p]").forEach(i => i.onchange = () => {      // gNB position
+    if (i.value === "") return;
+    CF.gnbXY[CF.gnb][+i.dataset.p] = +i.value; markDirty(); checkPosition(CF.gnb);
+  });
+  drawPosWarn();
   document.querySelectorAll("#cfgPane [data-u]").forEach(i => i.onchange = () => {
     CF.ue[i.dataset.u] = i.type === "number" ? +i.value : i.value; markDirty();
   });
@@ -921,20 +958,38 @@ function cfgDrawPane() {
     } catch (e) { setStatus("Server error: " + e.message, "err"); }
   };
   $("cfClear").onclick = () => { CF.ues = []; CF.selected = null; cfgDrawTable(); cfgDrawUEs(); };
-  $("cfReset").onclick = () => { CF.sectors = clone(CF.defaults.sectors); CF.ue = clone(CF.defaults.ue); CF.rays = CF.defaults.rays; CF.dirty = false; cfgDrawAll(); run(true); };
+  $("cfReset").onclick = () => { CF.sectors = clone(CF.defaults.sectors); CF.gnbXY = clone(CF.defaults.gnb_xy); CF.posWarn = {}; CF.ue = clone(CF.defaults.ue); CF.rays = CF.defaults.rays; CF.dirty = false; cfgDrawAll(); run(true); };
+  $("cfDefaults").onclick = () => { $("cfgDefaults").toggleAttribute("hidden"); cfgDrawDefaults(); };
   setStatus(CF.status, CF.statusKind);
-  cfgDrawTable();
+  cfgDrawTable(); cfgDrawCoverage();
 }
-function markDirty() { CF.dirty = true; $("cfgDirty").hidden = false; cfgDrawCoverage(); cfgDrawDefaults(); cfgDrawArrows(); }
+const gnbSectors = () => CF.sectors.filter(x => CF.gnb === "All" || x.name[0] === CF.gnb);
+const moved = g => CF.gnbXY[g].some((v, i) => Math.abs(v - CF.defaults.gnb_xy[g][i]) > 1e-3);
+// the sectors as sent to the server: x, y only for a moved gNB (otherwise config.py's position, as before)
+function sectorsForRun() {
+  return CF.sectors.map(x => moved(x.name[0]) ? { ...clone(x), x: CF.gnbXY[x.name[0]][0], y: CF.gnbXY[x.name[0]][1] } : clone(x));
+}
+async function checkPosition(g) {
+  const [x, y] = CF.gnbXY[g];
+  if (!moved(g)) { CF.posWarn[g] = ""; drawPosWarn(); return; }
+  try {
+    const r = await api(`/check_position?x=${x}&y=${y}&scene=${twinScene()}`);
+    CF.posWarn[g] = !r.inside_area ? `gNB-${g}: outside the campus area` : r.inside_building ? `gNB-${g}: inside a building (roof ${r.roof_m} m)` : "";
+  } catch (e) { CF.posWarn[g] = ""; }
+  drawPosWarn();
+}
+function drawPosWarn() { const w = $("cfgPosWarn"); if (w) w.innerHTML = Object.values(CF.posWarn).filter(Boolean).map(esc).join("<br>"); }
+function markDirty() { CF.dirty = true; $("cfgDirty").hidden = false; cfgDrawDefaults(); cfgDrawArrows(); }
 
+const snAz = n => { const x = (CF.applied || CF).sectors.find(q => q.name === n); return x ? `${sn(n)} · ${x.azimuth_deg}°` : sn(n); };
 function ueResult(id) { return CF.result ? CF.result.ues.find(r => r.id === id) : null; }
 function cfgDrawTable() {
   if (!$("cfgUETable")) return;
-  if (!CF.ues.length) { $("cfgUETable").innerHTML = `<h3>UEs</h3><div class="small">No UEs yet: click the campus or place random UEs.</div>`; $("cfgUEDetail").innerHTML = ""; return; }
+  if (!CF.ues.length) { $("cfgUETable").innerHTML = `<div class="alert">Select a UE</div>`; $("cfgUEDetail").innerHTML = ""; return; }
   $("cfgUETable").innerHTML = `<h3>UEs (${CF.ues.length})</h3><table id="cfgTable"><tr><th>UE</th><th>serving</th><th>RSRP (dBm)</th><th>SINR (dB)</th><th>LOS</th><th>beam</th><th></th></tr>
     ${CF.ues.map(u => { const r = ueResult(u.id);
       return `<tr data-id="${u.id}" class="${u.id === CF.selected ? "sel" : ""}"><td>${u.id}${r && r.indoor ? " (indoor)" : ""}</td>
-        <td>${r ? `<span class="dot" style="background:${siteColor(r.serving[0])}"></span>${r.serving}` : "…"}</td>
+        <td>${r ? `<span class="dot" style="background:${siteColor(r.serving[0])}"></span>${snAz(r.serving)}` : "…"}</td>
         <td>${r ? fmt(r.rsrp_dbm[r.serving]) : "…"}</td><td>${r ? fmt(r.sinr_db) : "…"}</td>
         <td>${r ? (r.los[r.serving] ? "yes" : "no") : "…"}</td><td>${r && r.serving_beam_deg != null ? r.serving_beam_deg + "°" : "–"}</td>
         <td><button data-del="${u.id}" title="delete" style="padding:0 6px">×</button></td></tr>`; }).join("")}</table>`;
@@ -943,41 +998,47 @@ function cfgDrawTable() {
     CF.selected = tr.dataset.id; cfgDrawTable(); cfgDrawUEs();
   });
   const r = ueResult(CF.selected);
-  $("cfgUEDetail").innerHTML = !r ? "" : `<h3>${r.id} at (${r.x.toFixed(0)}, ${r.y.toFixed(0)}) m${r.indoor ? " · inside a building footprint (the model is outdoor)" : ""}</h3>
+  $("cfgUEDetail").innerHTML = !r ? `<div class="alert">Select a UE</div>` : `<h3>${r.id} at (${r.x.toFixed(0)}, ${r.y.toFixed(0)}) m${r.indoor ? " (indoor)" : ""}</h3>
     <table><tr><th>sector</th><th>RSRP (dBm)</th><th>path</th><th>best beam</th></tr>
     ${CF.result.sector_names.slice().sort((a, b) => r.rsrp_dbm[b] - r.rsrp_dbm[a]).map(n => `<tr style="${n === r.serving ? "font-weight:700" : ""}">
-      <td><span class="dot" style="background:${siteColor(n[0])}"></span>${n}${n === r.serving ? " ← serving" : ""}</td>
-      <td>${r.rsrp_dbm[n] < -250 ? "no path" : fmt(r.rsrp_dbm[n])}</td><td>${r.los[n] ? (r.los_clear_of_trees && !r.los_clear_of_trees[n] ? "line of sight, through tree crowns" : "line of sight") : "blocked"}</td><td>${r.best_beam[n] + 1}</td></tr>`).join("")}</table>
-    <div class="small">${esc(CF.result.assumptions)}</div>`;
+      <td><span class="dot" style="background:${siteColor(n[0])}"></span>${snAz(n)}${n === r.serving ? " ← serving" : ""}</td>
+      <td>${r.rsrp_dbm[n] < -250 ? "no path" : fmt(r.rsrp_dbm[n])}</td><td>${r.los[n] ? (r.los_clear_of_trees && !r.los_clear_of_trees[n] ? "LOS, trees" : "LOS") : "blocked"}</td><td>${r.best_beam[n] + 1}</td></tr>`).join("")}</table>`;
 }
 
-// ---- the always-visible defaults panel: today's model, and what the current settings change
+// ---- the Defaults popup (button in the panel): today's model, and what the current settings change
 function cfgDrawDefaults() {
   if (!CF.defaults) return;
-  const g = CF.defaults.gnb, u = CF.defaults.ue;
-  const vals = k => [...new Set(CF.sectors.map(s => String(s[k])))];
-  const row = (label, def, cur) => `<tr><td>${label}</td><td>${def}</td><td class="${String(cur) !== String(def) ? "changed" : ""}">${cur}</td></tr>`;
-  const gcur = k => { const v = vals(k); return v.length === 1 ? v[0] : "mixed (" + v.join(", ") + ")"; };
-  $("cfgDefaults").innerHTML = `<b>Defaults</b> <span class="small">(today's model) · current</span>
-    <table><tr><td colspan="3"><h2>gNB, every sector</h2></td></tr>
-    ${row("array", g.array, gcur("array"))}${row("pattern", g.pattern, gcur("pattern"))}${row("polarization", g.polarization, gcur("polarization"))}
-    ${row("power (dBm)", g.power_dbm, gcur("power_dbm"))}${row("height (m)", [...new Set(CF.defaults.sectors.map(s => s.height_m))].join(", "), gcur("height_m"))}${row("downtilt (°)", g.downtilt_deg, gcur("downtilt_deg"))}
-    ${row("SSB beams", g.num_beams, gcur("num_beams"))}
-    ${row("azimuths", "config.py", CF.sectors.every((s, i) => s.azimuth_deg === CF.defaults.sectors[i].azimuth_deg) ? "config.py" : "changed")}
-    <tr><td colspan="3"><h2>UE</h2></td></tr>
+  const u = CF.defaults.ue;
+  const G = ["A", "B", "C"], secs = g => CF.sectors.filter(x => x.name[0] === g), dsecs = g => CF.defaults.sectors.filter(x => x.name[0] === g);
+  const one = (list, k) => { const v = [...new Set(list.map(x => String(x[k])))]; return v.length === 1 ? v[0] : v.join(", "); };
+  const fmtXY = p => p.map(v => (+v).toFixed(1)).join(", ");
+  const grow = (label, defOf, curOf) => { const d = G.map(defOf), c = G.map(curOf), dAll = new Set(d).size === 1 ? d[0] : "per gNB";
+    return `<tr><td>${label}</td><td>${dAll}</td>${G.map((g, i) => `<td class="${c[i] !== d[i] ? "changed" : ""}" title="default ${d[i]}">${c[i]}</td>`).join("")}</tr>`; };
+  const gkey = (label, k) => grow(label, g => one(dsecs(g), k), g => one(secs(g), k));
+  const row = (label, def, cur) => `<tr><td>${label}</td><td>${def}</td><td colspan="3" class="${String(cur) !== String(def) ? "changed" : ""}">${cur}</td></tr>`;
+  $("cfgDefaults").innerHTML = `<button id="cfgDefClose" title="close">×</button><b>Defaults</b>
+    <table><tr><th></th><th class="small">default</th>${G.map(g => `<th class="small">gNB-${g}</th>`).join("")}</tr><tr><td colspan="5"><h2>gNBs</h2></td></tr>
+    ${grow("position x, y (m)", g => fmtXY(CF.defaults.gnb_xy[g]), g => fmtXY(CF.gnbXY[g]))}
+    ${gkey("height (m)", "height_m")}${gkey("power (dBm)", "power_dbm")}${gkey("downtilt (°)", "downtilt_deg")}${gkey("SSB beams", "num_beams")}
+    ${gkey("array", "array")}${gkey("pattern", "pattern")}${gkey("polarization", "polarization")}
+    ${grow("azimuths (°)", g => dsecs(g).map(x => x.azimuth_deg).join(", "), g => secs(g).map(x => x.azimuth_deg).join(", "))}
+    <tr><td colspan="5" class="small">${G.map(g => secs(g).map(x => sn(x.name)).join(", ")).join(" · ")}: sectors in azimuth order</td></tr>
+    <tr><td colspan="5"><h2>UE</h2></td></tr>
     ${row("array", u.array, CF.ue.array)}${row("pattern", u.pattern, CF.ue.pattern)}${row("polarization", u.polarization, CF.ue.polarization)}
     ${row("height (m)", u.height_m, CF.ue.height_m)}${row("noise figure (dB)", u.noise_figure_db, CF.ue.noise_figure_db)}
-    <tr><td colspan="3"><h2>Ray tracing</h2></td></tr>
+    <tr><td colspan="5"><h2>Ray tracing</h2></td></tr>
     ${row("rays per sector", raysText(CF.defaults.rays), raysText(CF.rays))}
     ${row("twin scene", "v2", twinScene())}
-    </table><div class="small">${(CF.defaults.frequency_hz / 1e9).toFixed(1)} GHz · ${CF.defaults.bandwidth_hz / 1e6} MHz · ${CF.defaults.num_prb} PRBs · coverage grid ${CF.defaults.grid_m} m · the study used ${raysText(CF.defaults.study_rays)}</div>`;
+    </table><div class="small">${(CF.defaults.frequency_hz / 1e9).toFixed(1)} GHz · ${CF.defaults.bandwidth_hz / 1e6} MHz · ${CF.defaults.num_prb} PRBs · coverage grid ${CF.defaults.grid_m} m</div>`;
+  $("cfgDefClose").onclick = () => $("cfgDefaults").hidden = true;
 }
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("cfgDefaults").hidden = true; });
 
 // ---- the 3D view: configured sector arrows, UEs, coverage map
-const sectorPos = s => { const d = SECTORS.find(x => x.name === s.name); return V(d.pos[0], d.pos[1], s.height_m); };
+const sectorPos = s => { const d = SECTORS.find(x => x.name === s.name); return s.x != null ? V(s.x, s.y, s.height_m) : V(d.pos[0], d.pos[1], s.height_m); };
 function cfgDrawArrows() {
   cfgArrows.clear();
-  for (const s of CF.sectors) {
+  for (const s of sectorsForRun()) {
     const a = s.azimuth_deg * Math.PI / 180, t = s.downtilt_deg * Math.PI / 180;
     const dir = V(Math.cos(a) * Math.cos(t), Math.sin(a) * Math.cos(t), -Math.sin(t)).normalize();
     const len = 40 + 8 * Math.log2(+s.array.split("x")[0] * 2);              // longer arrow = bigger array
@@ -1010,8 +1071,8 @@ function coveragePct() {
   return 100 * v.filter(x => x > CF.threshold).length / v.length;
 }
 function cfgDrawCoverage() {
-  const C = CF.coverage;
-  if (!C) { covMesh.visible = false; $("cfgCoverage").innerHTML = "<b>Coverage</b>: computing …"; return; }
+  const C = CF.coverage, box = $("cfgCov");
+  if (!C) { covMesh.visible = false; if (box) box.textContent = "Coverage: …"; return; }
   const { nx, ny, x0, y0, cell_m } = C.grid;
   covCanvas.width = nx; covCanvas.height = ny;
   const ctx = covCanvas.getContext("2d"), img = ctx.createImageData(nx, ny);
@@ -1024,13 +1085,8 @@ function cfgDrawCoverage() {
   ctx.putImageData(img, 0, 0); covTex.needsUpdate = true;
   covMesh.scale.set(nx * cell_m, ny * cell_m, 1);
   covMesh.position.copy(V(x0 + nx * cell_m / 2, y0 + ny * cell_m / 2, 0.3)); covMesh.visible = coverageLayerOn();
-  const pct = coveragePct(), stale = CF.dirty ? `<div class="cfgstatus warn">Settings changed since this map: press Run.</div>` : "";
-  const preview = C.label.includes("preview") ? `<div class="small">Fewer rays than the study: with the default settings, 2e5 rays give 76 % vs 91 % at 1e6 (−110 dBm); weak cells lose paths. Use 1e6 or 4e6 rays for numbers you report.</div>` : "";
-  $("cfgCoverage").innerHTML = `<div class="big">Coverage (RSRP &gt; <input id="cfThr" type="number" step="1" value="${CF.threshold}" style="width:64px"> dBm): ${pct.toFixed(1)} %</div>
-    <div class="small">of ${C.outdoor_cells} outdoor ${cell_m} m cells, with ${esc(C.gnb_assumptions)}; ${esc(C.ue_assumptions)}; ${raysText(C.rays)}; ${C.scene === "v2" ? "twin v2 (drawings + trees, vegetation loss to be calibrated)" : "twin v1 (study)"}.
-    Grey = below the threshold.${C.ue_antenna_note ? " " + esc(C.ue_antenna_note) : ""}</div>${stale}${preview}
-    <div class="heatbar" style="height:8px;border-radius:4px;margin:6px 0 2px;background:linear-gradient(90deg,${T.rsrp_map.colors.join(",")})"></div>
-    <div class="small heatbar" style="display:flex;justify-content:space-between"><span>${LO}</span><span>best-server RSRP (dBm)</span><span>${HI}</span></div>`;
+  if (!box) return;
+  box.innerHTML = `Coverage: ${coveragePct().toFixed(1)} % (RSRP &gt; <input id="cfThr" type="number" step="1" value="${CF.threshold}"> dBm)`;
   $("cfThr").onchange = e => { CF.threshold = +e.target.value; cfgDrawCoverage(); };
 }
 function cfgDrawResults() { cfgDrawTable(); cfgDrawUEs(); cfgDrawCoverage(); }          // keeps the forms (and focus) as they are
@@ -1042,7 +1098,8 @@ function removeUE(id) { CF.ues = CF.ues.filter(u => u.id !== id); if (CF.selecte
 function cfgShow(on) {
   cfgGroup.visible = on; map.visible = !on; defaultArrows.forEach(a => a.visible = !on);
   if (on) ueGroup.visible = false;
-  [$("cfgPane"), $("cfgDefaults"), $("cfgCoverage")].forEach(el => el.toggleAttribute("hidden", !on));
+  document.body.classList.toggle("cfg", on); $("cfgBox").hidden = !on; resize();
+  if (!on) $("cfgDefaults").hidden = true;
   if (on) { frameCamera(CF.ues.map(u => [u.x, u.y])); cfgInit(); cfgDrawDefaults(); cfgDrawCoverage(); }
 }
 document.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => cfgShow(b.dataset.tab === "configure")));
@@ -1213,6 +1270,8 @@ function infoHtml() {
       OpenStreetMap; heights set to G+3 (${v.g3_m} m), kiosks/shops under 100 m² 1 floor (${v.floor_m} m), Lal Minar
       ${v.lal_minar_m} m (estimated). ${SV2.trees.length} trees: vegetation loss ${veg.db_per_m} dB/m, cap ${veg.cap_db} dB,
       <b>to be calibrated</b>.` : "") +
+    `<h2>Names</h2>Sectors are numbered by azimuth within each site: ${Object.entries(SECTOR_LABEL).map(([k, v]) => `${v} = ${k}`).join(", ")}
+      (the report uses the azimuth names). Strategies: Fixed = B1, Random = B2 in the report.` +
     (tab === "strategies" || tab === "whatif" || (tab === "mobility" && T.walk_scene !== "v2")
       ? `<br><i>This tab's results come from the study's twin (v1).</i>` : "") +
     (T.walk_scene === "v2" ? `<h2>Walking person (Mobility tab)</h2>Three walks along the campus roads and paths
