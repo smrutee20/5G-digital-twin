@@ -164,7 +164,8 @@ def build_page(twin, logs, default_route=C.DEFAULT_ROUTE):
     tasks_file = ROOT / "data" / "demo_tasks.json"                 # saved by tasks 1, 6 and 7 for the Scenario box and tabs
     tasks = json.loads(tasks_file.read_text()) if tasks_file.exists() else {}
     data = dict(twin=twin, logs=logs, flows=FLOWS, identities=IDENTITIES, default_route=default_route,
-                step_m=C.STEP_M, tasks=tasks)
+                step_m=C.STEP_M, tasks=tasks,
+                delay_ms=C.DELAY_MS, processing_ms=C.PROCESSING_MS)     # for the live packet status (sent / arrives)
     # optional: the corrected twin v2 (tasks/task9_scene_v2.py) and the campus layers (tools/campus_context.py)
     # pcap: one masked example frame per message type from the class captures (tools/extract_pcap.py)
     for key, name in (("v2", "scene_v2.json"), ("context", "campus_context.json"), ("pcap", "pcap_examples.json")):

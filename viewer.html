@@ -10,7 +10,9 @@
   twin data and message logs where DATA is. Everything is precomputed in Python; this page only plays it back.
     left   = the 3D campus twin: buildings, sites and sectors, RSRP map, the walking phone, its serving sector
     right  = the 5G network: elements, interfaces, the current message moving along its interface
-    bottom = what is happening now, in one line, and the identities in use
+    middle = the inspector, only while something in the network is clicked: an element, a message (its live packet
+             status), an interface or the message list
+    bottom = what is happening now, in one line (with the live tracker of the current message), and the identities in use
 -->
 <style>
 :root {
@@ -122,19 +124,138 @@ body.cfg #netSection { display: none; }
 .cfggrp > span { font-size: 12px; color: var(--ink2); font-weight: 600; }
 .cfggrp > div { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .cfggrp input[type=number] { width: 64px; font: inherit; padding: 3px 6px; border: 1px solid var(--line); border-radius: 6px; }
-/* the 5G Network Visualiser: element / packet / interface panel */
-#nfPanel { position: absolute; top: 34px; right: 8px; bottom: 8px; width: min(400px, calc(100% - 16px)); overflow: auto; z-index: 4;
-  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 6px 20px rgba(0, 0, 0, .15); }
-#nfPanel .nfx { float: right; padding: 0 8px; }
-#nfPanel .nfh { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
-#nfPanel h3 { font-size: 12px; margin: 10px 0 4px; }
-#nfPanel table { border-collapse: collapse; width: 100%; }
-#nfPanel td { padding: 2px 4px; vertical-align: top; border-bottom: 1px solid var(--muted); word-break: break-word; }
-#nfPanel a, .pklink { color: var(--A); cursor: pointer; text-decoration: underline dotted; }
-#nfPanel .nfmsgs button { padding: 0 6px; font-size: 11px; white-space: nowrap; }
-.pk { font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 8px; white-space: nowrap; }
-.pk.real { background: #dcfce7; color: #166534; } .pk.sim { background: #eef0f4; color: var(--ink2); }
+/* the 5G Network Visualiser: the inspector (element / message / interface / message list) and the live packet tracker */
+:root { --sel: #2563eb; --fly: #d97706; --ok: #16a34a; --cp: #4f46e5; --up: #0d9488; }
+main { position: relative; }
+main > section:first-child { order: 1; } #insp { order: 2; } #netSection { order: 3; }
+main.insp3 { grid-template-columns: minmax(0, 1fr) 384px var(--netw); }
+main.inspOver #insp { position: absolute; z-index: 6; top: 0; bottom: 0; right: calc(28px + var(--netw)); width: min(384px, calc(100% - var(--netw) - 60px)); box-shadow: 0 10px 34px rgba(15, 23, 42, .22); }
+@media (max-width: 900px) { #insp { order: 4; max-height: 78vh; } }
+#coreTitle { display: flex; align-items: center; gap: 10px; padding-right: 12px; }
+#coreTitle .hint { flex: 1; font-size: 11.5px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#coreTitle button { padding: 2px 10px; font-size: 12px; }
+.node { cursor: pointer; }
+.node rect { transition: stroke-width .12s, filter .12s; }
+.node.k-cp rect { fill: #f5f6ff; stroke: #6366f1; } .node.k-up rect { fill: #effcf9; stroke: var(--up); }
+.node.k-dn rect { fill: #f3f5f8; stroke: #64748b; } .node.k-ue rect { fill: #fff; stroke: var(--ink); } .node.k-ran rect { fill: #fff; }
+.node:hover rect { stroke-width: 2.2; filter: drop-shadow(0 2px 4px rgba(15, 23, 42, .22)); }
+.node:focus { outline: none; } .node:focus-visible rect { stroke: var(--sel) !important; stroke-width: 3; }
+.node.sel rect { stroke: var(--sel) !important; stroke-width: 3; filter: drop-shadow(0 0 5px rgba(37, 99, 235, .55)); }
+.node.active rect { stroke: var(--hl) !important; stroke-width: 2.5; }
+.node .led { fill: #d5dae2; stroke: #fff; stroke-width: 1.2; transition: fill .2s; }
+.node .led[data-st=on] { fill: var(--ok); } .node .led[data-st=warn] { fill: #f59e0b; }
+.iflabel { cursor: pointer; pointer-events: all; }
+.iflabel:hover, .iflabel.sel { fill: var(--sel); font-weight: 700; }
+.link.sel { stroke: var(--sel); stroke-width: 3; opacity: 1; }
+.link.jrn { stroke: #f59e0b; stroke-width: 3; opacity: .6; }
+#pkt { cursor: pointer; }
+#pkt .halo { fill: var(--hl); opacity: .2; transform-box: fill-box; transform-origin: center; animation: pkPulse 1.1s ease-in-out infinite; }
+#pkt .core { fill: var(--hl); stroke: #fff; stroke-width: 1.5; transition: fill .2s; }
+#pkt.landed .halo { animation: none; fill: var(--ok); opacity: .16; } #pkt.landed .core { fill: var(--ok); }
+#pkt.sel .core { stroke: var(--ink); stroke-width: 2; }
+@keyframes pkPulse { 0%, 100% { transform: scale(.75); } 50% { transform: scale(1.25); } }
+#ripple { fill: none; stroke: var(--ok); stroke-width: 2.5; opacity: 0; pointer-events: none; transform-box: fill-box; transform-origin: center; }
+#ripple.go { animation: pkRipple .7s ease-out; }
+@keyframes pkRipple { from { transform: scale(.35); opacity: .9; } to { transform: scale(1.5); opacity: 0; } }
+#dotlabel { cursor: pointer; text-anchor: middle; }
+/* the bottom line: step buttons and the live tracker of the current message */
+#note { cursor: pointer; } #note:hover { color: var(--sel); } #note.quiet { font-weight: 400; font-size: 13px; color: var(--ink2); cursor: default; }
+.stepbtns { display: inline-flex; gap: 2px; } .stepbtns button { padding: 0 8px; height: 22px; line-height: 20px; font-size: 12px; }
+#track { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.jr { display: inline-flex; align-items: center; gap: 0; font-size: 11px; vertical-align: middle; }
+.jr .jn { padding: 1px 7px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); color: var(--ink) !important; font-weight: 600; white-space: nowrap; cursor: pointer; text-decoration: none !important; transition: border-color .2s, background .2s; }
+.jr .jn:hover { border-color: var(--sel); color: var(--sel) !important; }
+.jr .jn.got, .jr .jn.from { border-color: var(--ok); background: #f0fdf4; }
+.jr .jh { position: relative; width: 44px; height: 18px; cursor: pointer; flex: 0 0 auto; }
+.jr .jh::before { content: ""; position: absolute; left: 0; right: 0; top: 11px; height: 3px; border-radius: 2px; background: var(--line); }
+.jr .jh b { position: absolute; left: 0; top: 11px; height: 3px; border-radius: 2px; width: calc(var(--p, 0) * 100%); background: var(--ok); }
+.jr .jh[data-st=fly] b { background: var(--fly); }
+.jr .jh[data-st=fly] b::after { content: ""; position: absolute; right: -5px; top: -3.5px; width: 10px; height: 10px; border-radius: 50%; background: var(--fly); box-shadow: 0 0 0 3px rgba(217, 119, 6, .25); }
+.jr .jh i { position: absolute; left: 0; right: 0; top: -2px; text-align: center; font-style: normal; font-size: 9px; color: var(--ink2); line-height: 11px; }
+.jr .jh.here i { color: var(--ink); font-weight: 700; } .jr .jh.here::before, .jr .jh.here b { height: 5px; top: 10px; }
+.jr .jh.here[data-st=fly] b::after { top: -2.5px; }
+.jr .jh:hover i { color: var(--sel); }
+.jr.big { display: flex; width: 100%; font-size: 12px; margin: 10px 0 4px; } .jr.big .jh { flex: 1 1 24px; min-width: 18px; }
+.jr.big .jn { padding: 2px 8px; } .jr.big.long .jn { padding: 2px 4px; font-size: 10.5px; }
+.pst { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 10px; white-space: nowrap; background: var(--muted); color: var(--ink2); }
+.pst::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pst[data-st=fly] { background: #fff3e0; color: #b45309; } .pst[data-st=fly]::before { animation: pkBlink .7s ease-in-out infinite alternate; }
+.pst[data-st=done] { background: #dcfce7; color: #166534; }
+@keyframes pkBlink { from { opacity: .25; } to { opacity: 1; } }
+/* the inspector */
+#insp { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; font-size: 12.5px; animation: inspIn .16s ease-out; }
+@keyframes inspIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
+#insp .ih { display: flex; align-items: center; gap: 6px; padding: 7px 8px 7px 12px; border-bottom: 1px solid var(--line); background: #fafbfc; }
+#insp .ih .crumb { flex: 1; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink2); }
+#insp .ih button { padding: 1px 9px; font-size: 13px; line-height: 20px; }
+#insp .ib { flex: 1; min-height: 0; overflow: auto; padding: 12px 12px 16px; }
+#insp h3 { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink2); margin: 16px 0 6px; }
+#insp h3 .small { text-transform: none; letter-spacing: 0; font-weight: 400; }
+#insp .ttl { font-size: 17px; font-weight: 700; line-height: 1.25; word-break: break-word; }
+#insp .sub { color: var(--ink2); margin-top: 2px; }
+#insp .lead { margin: 8px 0 0; font-size: 13px; line-height: 1.45; }
+#insp table { border-collapse: collapse; width: 100%; }
+#insp td { padding: 3px 4px; vertical-align: top; border-bottom: 1px solid var(--muted); word-break: break-word; }
+#insp td:first-child { color: var(--ink2); width: 42%; }
+#insp tr.carried td { background: #fdf3f3; }
+#insp .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; }
+#insp a, .pklink { color: var(--A); cursor: pointer; text-decoration: none; } #insp a:hover { text-decoration: underline; }
+.kindtag { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 1px 7px; border-radius: 4px; background: var(--muted); color: var(--ink2); margin: 0 4px 4px 0; }
+.kindtag.k-cp { background: #eef0ff; color: var(--cp); } .kindtag.k-up { background: #e3faf5; color: #0f766e; } .kindtag.k-ue { background: var(--ink); color: #fff; }
+.kindtag.k-ran { background: #fff4e0; color: #b45309; } .kindtag.nas { background: #f1eaff; color: var(--n1); }
+.pk { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 8px; white-space: nowrap; }
+.pk.real { background: #dcfce7; color: #166534; } .pk.sim { background: #eef0f4; color: var(--ink2); } .pk.new { background: #fdecec; color: var(--hl); }
+/* live packet status */
+.hero { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-top: 12px; background: #fafbfc; transition: background .25s, border-color .25s; }
+.hero[data-st=fly] { background: #fffaf2; border-color: #fbbf77; } .hero[data-st=done] { background: #f4fcf6; border-color: #9fdcb1; }
+.hero .herotop { display: flex; align-items: center; gap: 8px; }
+.hero .lbl { flex: 1; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink2); }
+.badge2 { font-size: 10.5px; font-weight: 700; padding: 1px 8px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel); color: var(--ink2); }
+.badge2.live { border-color: #fca5a5; color: var(--hl); background: #fff5f5; }
+.hero .bigst { margin: 8px 0 2px; } .hero .bigst .pst { font-size: 14px; padding: 4px 12px; border-radius: 14px; }
+.hero .times { display: grid; grid-template-columns: 1fr auto 1fr; gap: 6px; font-size: 11.5px; color: var(--ink2); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.hero .times b { display: block; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; font-weight: 600; } .hero .times > span:nth-child(2) { text-align: center; } .hero .times > span:last-child { text-align: right; }
+.hero .times span > span { color: var(--ink); font-weight: 600; }
+.hero .ctl { display: flex; gap: 5px; margin-top: 10px; flex-wrap: wrap; } .hero .ctl button { flex: 1 1 auto; padding: 3px 6px; font-size: 12px; white-space: nowrap; }
+.hero .hopline { font-size: 11.5px; color: var(--ink2); }
+/* cause and effect: a small vertical timeline */
+.cz { display: grid; grid-template-columns: 16px 1fr auto; gap: 0 8px; padding: 5px 6px 5px 2px; border-radius: 7px; cursor: pointer; position: relative; color: inherit !important; text-decoration: none !important; }
+.cz:hover { background: var(--muted); } .cz.here { background: #eef4ff; }
+.cz .rail { position: relative; } .cz .rail::before { content: ""; position: absolute; left: 7px; top: -5px; bottom: -5px; width: 2px; background: var(--line); }
+.cz:first-child .rail::before { top: 8px; } .cz:last-child .rail::before { bottom: calc(100% - 8px); } .cz:only-child .rail::before { display: none; }
+.cz .rail i { position: absolute; left: 3px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--panel); border: 2px solid #b6bdc9; }
+.cz .rail i[data-st=done] { background: var(--ok); border-color: var(--ok); } .cz .rail i[data-st=fly] { background: var(--fly); border-color: var(--fly); box-shadow: 0 0 0 3px rgba(217, 119, 6, .22); }
+.cz .who { font-weight: 600; } .cz .what { color: var(--ink2); font-size: 11.5px; word-break: break-word; } .cz.here .what { color: var(--ink); }
+.cz .when { font-size: 11px; color: var(--ink2); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cz .role { display: block; font-size: 9.5px; letter-spacing: .05em; text-transform: uppercase; font-weight: 700; color: var(--ink2); }
+.ifc { display: inline-block; font-size: 10px; font-weight: 700; padding: 0 5px; border-radius: 4px; background: var(--muted); color: var(--ink2); font-family: ui-monospace, Menlo, Consolas, monospace; }
+/* encapsulation: nested layers, outermost first */
+.encap .ly { border: 1px solid color-mix(in srgb, var(--lc, #94a3b8) 55%, #fff); border-left: 3px solid var(--lc, #94a3b8); border-radius: 6px; padding: 3px 5px 5px 7px; background: color-mix(in srgb, var(--lc, #94a3b8) 7%, #fff); }
+.encap .ly > span { display: flex; gap: 6px; align-items: baseline; font-size: 11px; margin-bottom: 3px; } .encap .ly > span b { color: var(--lc, var(--ink2)); font-family: ui-monospace, Menlo, Consolas, monospace; white-space: nowrap; }
+.encap .ly > span em { font-style: normal; color: var(--ink); font-weight: 600; word-break: break-word; }
+.encap .ly.leaf { padding-bottom: 3px; } .encap .ly.leaf > span { margin-bottom: 0; }
 .stack { display: flex; flex-wrap: wrap; gap: 3px; } .stack span { border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; background: var(--muted); font-family: ui-monospace, Menlo, monospace; font-size: 11px; }
+/* an element's state machines and protocol stacks */
+.sm { display: grid; grid-template-columns: 104px 1fr; gap: 4px 8px; align-items: center; margin: 5px 0; }
+.sm .k { color: var(--ink2); } .sm .sts { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; }
+.sm .st { font-size: 11px; padding: 2px 8px; border-radius: 10px; border: 1px solid var(--line); color: #9aa3b2; background: var(--panel); white-space: nowrap; }
+.sm .st.on { background: var(--ok); border-color: var(--ok); color: #fff; font-weight: 700; } .sm .st.on.warn { background: #f59e0b; border-color: #f59e0b; } .sm .st.on.off { background: #64748b; border-color: #64748b; }
+.sm .arr { color: #b6bdc9; font-size: 10px; }
+.stacks { display: flex; gap: 6px; align-items: flex-end; flex-wrap: wrap; }
+.stk { flex: 1 1 70px; min-width: 70px; display: flex; flex-direction: column; gap: 2px; padding: 5px; border: 1px solid var(--line); border-radius: 8px; background: #fafbfc; transition: border-color .2s, background .2s; }
+.stk.lit { border-color: var(--hl); background: #fff7f7; box-shadow: 0 0 0 2px rgba(220, 38, 38, .12); }
+.stk .hd { display: flex; flex-direction: column; font-size: 10.5px; color: var(--ink2); margin-bottom: 2px; } .stk .hd a { font-weight: 700; font-size: 12px; }
+.stk .lyr { text-align: center; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 10.5px; padding: 2px 3px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--lc, #94a3b8) 45%, #fff); background: color-mix(in srgb, var(--lc, #94a3b8) 10%, #fff); color: var(--ink); }
+.meter { position: relative; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #ef4444, #f59e0b 35%, #84cc16 65%, #16a34a); margin: 8px 0 3px; }
+.meter i { position: absolute; top: -4px; width: 4px; height: 16px; border-radius: 2px; background: var(--ink); transform: translateX(-2px); box-shadow: 0 0 0 2px #fff; }
+.meterticks { display: flex; justify-content: space-between; font-size: 10px; color: var(--ink2); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; } .chips button { padding: 1px 9px; font-size: 11.5px; border-radius: 11px; }
+.mlist { margin-top: 8px; }
+.mlist .mr { display: grid; grid-template-columns: 30px 1fr auto; gap: 0 6px; padding: 4px 6px; border-radius: 6px; cursor: pointer; border-left: 3px solid transparent; color: inherit !important; text-decoration: none !important; }
+.mlist .mr:hover { background: var(--muted); } .mlist .mr[data-st=future] { opacity: .5; } .mlist .mr.cur { background: #eef4ff; border-left-color: var(--sel); opacity: 1; }
+.mlist .mr .n { color: var(--ink2); font-size: 11px; font-variant-numeric: tabular-nums; padding-top: 1px; } .mlist .mr .w { font-size: 11px; color: var(--ink2); } .mlist .mr .m { font-weight: 600; word-break: break-word; }
+.mlist .mr .t { font-size: 11px; color: var(--ink2); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+.mlist .fl { font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #fff; padding: 1px 8px; border-radius: 9px; display: inline-block; margin: 10px 0 3px; }
 .wstree { font: 11.5px/1.45 ui-monospace, Menlo, monospace; border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; margin-top: 4px; }
 .wstree details { margin-left: 12px; } .wstree > details { margin-left: 0; } .wstree .leaf { margin-left: 26px; white-space: pre-wrap; word-break: break-all; }
 .wstree summary { cursor: pointer; white-space: pre-wrap; word-break: break-all; }
@@ -175,8 +296,12 @@ body:not(.heat) #signal #bar, body:not(.heat) #signal #barTicks, body:not(.heat)
     <div class="overlay" id="uePanel" hidden></div>
     <div class="overlay small" id="scenario"></div>
   </section>
+  <aside id="insp" aria-label="Inspector" hidden>
+    <div class="ih"><button data-act="back" title="back" hidden>←</button><span class="crumb"></span><button data-act="close" title="close (Esc)">×</button></div>
+    <div class="ib"></div>
+  </aside>
   <section id="netSection">
-    <div id="coreTitle"><h2>5G Network Visualiser</h2></div>
+    <div id="coreTitle"><h2>5G Network Visualiser</h2><span class="hint">click an element, an interface or the moving message</span><button id="msgListBtn" title="every message of this flow or of the whole walk">Messages</button></div>
     <svg id="net" viewBox="0 0 680 470" preserveAspectRatio="xMidYMid meet"></svg>
     <div class="pane" id="stratPane" hidden></div>
     <div class="pane" id="whatifPane" hidden></div>
@@ -187,7 +312,9 @@ body:not(.heat) #signal #bar, body:not(.heat) #signal #barTicks, body:not(.heat)
 
 <footer>
   <div id="now"><span class="flowwrap"><span class="badge" id="flow"></span><button id="noteBtn" aria-expanded="false" title="what is happening">i</button>
-    <div id="notePop" role="tooltip" hidden></div></span><span id="note"></span><span class="small" id="time"></span></div>
+    <div id="notePop" role="tooltip" hidden></div></span>
+    <span class="stepbtns" id="stepBtns"><button data-act="prev" title="previous message (←)">◀</button><button data-act="next" title="next message (→)">▶</button></span>
+    <span id="note"></span><span id="track" title="live status of this message: click a hop or an element"></span><span class="small" id="time"></span></div>
   <div id="ids"></div>
 </footer>
 
@@ -354,15 +481,24 @@ for (const [a, b, iface] of LINKS) {
   labelEl[k] = el("text", { x: at.x, y: at.y + 4, class: "iflabel" }, svg);
   labelEl[k].textContent = iface === "N1" ? "N1 (NAS, carried over Uu + N2)" : iface;
 }
+// a node: its box (tinted by kind: phone, radio, control plane, user plane, data network), its name, a line of text
+// below it and a small light that shows whether it holds live state for the phone (set by the visualiser script)
+const ledEl = {}, subEl = {};
 for (const [name, [x, y, title, sub]] of Object.entries(POS)) {
-  const g = el("g", { class: "node" }, svg), w = name === "SIDF" ? 80 : 92, h = name === "SIDF" ? 36 : 42;
+  const kind = name === "UE" ? "ue" : name.startsWith("gNB") ? "ran" : name === "UPF" ? "up" : name === "Internet" ? "dn" : "cp";
+  const g = el("g", { class: "node k-" + kind }, svg), w = name === "SIDF" ? 80 : 92, h = name === "SIDF" ? 36 : 42;
   const r = el("rect", { x: x - w / 2, y: y - h / 2, width: w, height: h, rx: 7 }, g);
   if (name.startsWith("gNB")) r.style.stroke = siteColor(name.slice(-1));
   el("text", { x, y: y - 2 }, g).textContent = title;
-  el("text", { x, y: y + 12, class: "sub" }, g).textContent = sub;
+  subEl[name] = el("text", { x, y: y + 12, class: "sub" }, g); subEl[name].textContent = sub;
+  ledEl[name] = el("circle", { cx: x + w / 2 - 8, cy: y - h / 2 + 8, r: 3.5, class: "led" }, g);
+  el("title", {}, ledEl[name]);
   nodeEl[name] = g;
 }
-const dot = el("circle", { r: 7, fill: css("--hl") }, svg);
+// the message on its way: a pulsing packet that turns green when it lands, and a ring at the element it reaches
+const ripple = el("circle", { id: "ripple", r: 30 }, svg);
+const dot = el("g", { id: "pkt" }, svg);
+el("circle", { r: 13, class: "halo" }, dot); el("circle", { r: 7, class: "core" }, dot); el("circle", { r: 17, fill: "transparent" }, dot);
 const dotLabel = el("text", { id: "dotlabel" }, svg);
 
 // ======================================================================= BOTTOM: identities
@@ -525,7 +661,9 @@ function showCore(e) {
 function showBottom(e) {
   const f = document.getElementById("flow");
   f.textContent = `Flow ${e.flow}: ${DATA.flows[e.flow]}`; f.style.background = css(`--f${e.flow}`);
-  document.getElementById("note").textContent = e.kind === "msg" ? `${msgName(e)} (${e.interface})` : "";
+  const note = document.getElementById("note");                 // a message by name; a walk step or a remark in lighter text
+  note.textContent = e.kind === "msg" ? `${msgName(e)} (${e.interface})` : snText(e.note);
+  note.classList.toggle("quiet", e.kind !== "msg");
   document.getElementById("notePop").textContent = snText(e.note);
   document.getElementById("time").textContent = `t = ${(e.t / 1000).toFixed(3)} s`;
   for (const [k, d] of Object.entries(idEl)) {
@@ -536,32 +674,77 @@ function showBottom(e) {
   }
 }
 
+// The message on screen (its index in the log) and how far it has flown, 0..1: the live packet status reads this.
+const FLIGHT = { i: -1, f: 1 };
+// Where the packet's name goes: next to the packet (above, below, to its left or right), in the first place where
+// it covers no element and no interface label; it stays where it is until that place is taken. If no place is free,
+// the one that covers least (an element counts 10 times an interface label).
+const NODE_BOXES = Object.entries(POS).map(([n, [x, y]]) => { const w = n === "SIDF" ? 40 : 46, h = n === "SIDF" ? 18 : 21; return [x - w, y - h, x + w, y + h, 10]; });
+const LABEL_SPOTS = [-18, 28, -32, 42, -46, 56].flatMap(dy => [0, -1, 1].map(side => [side, dy]));
+let labelBoxes = null;
+function obstacles() {
+  if (!labelBoxes) try {                                    // measured once, when the diagram is on screen
+    const b = Object.values(labelEl).map(l => { const r = l.getBBox(); return [r.x, r.y, r.x + r.width, r.y + r.height, 1]; });
+    if (b.every(r => r[2] > r[0])) labelBoxes = b;
+  } catch (err) {}
+  return labelBoxes ? NODE_BOXES.concat(labelBoxes) : NODE_BOXES;
+}
+function labelSpot(pt, half, last) {
+  const boxes = obstacles();
+  let best = null, least = Infinity;
+  for (const s of last ? [last, ...LABEL_SPOTS] : LABEL_SPOTS) {
+    const cx = pt.x + s[0] * (half + 8), x0 = cx - half, x1 = cx + half, y = pt.y + s[1];
+    if (x0 < 2 || x1 > 678 || y < 14 || y > 464) continue;
+    let covered = 0;
+    for (const r of boxes) if (x0 < r[2] + 3 && x1 > r[0] - 3 && y - 12 < r[3] && y + 4 > r[1]) covered += r[4];
+    if (!covered) return s;
+    if (covered < least) { best = s; least = covered; }
+  }
+  return best || last || LABEL_SPOTS[0];
+}
 function animateDot(e, ms) {                               // the message travels along its interface
   cancelAnimationFrame(anim);
-  if (e.kind !== "msg") return;
-  const p = linkEl[key(e.src, e.dst)]; if (!p) return;
+  dot.classList.remove("landed"); ripple.classList.remove("go");
+  const p = e.kind === "msg" && linkEl[key(e.src, e.dst)];
+  if (!p) { FLIGHT.f = 1; return; }
   const L = p.getTotalLength(), start = p.getPointAtLength(0);
   const forward = Math.hypot(start.x - POS[e.src][0], start.y - POS[e.src][1]) < 1;
+  const at = s => p.getPointAtLength(L * (forward ? s : 1 - s));
+  // it leaves the edge of the sender's box and stops at the edge of the receiver's, so it never hides a name
+  const inBox = (pt, n) => Math.abs(pt.x - POS[n][0]) < (n === "SIDF" ? 40 : 46) + 9 && Math.abs(pt.y - POS[n][1]) < (n === "SIDF" ? 18 : 21) + 9;
+  let a = 0, b = 1;
+  while (a < 0.45 && inBox(at(a), e.src)) a += 0.01;
+  while (b > 0.55 && inBox(at(b), e.dst)) b -= 0.01;
   dot.style.display = dotLabel.style.display = ""; dotLabel.textContent = msgName(e);
+  const half = dotLabel.getComputedTextLength() / 2 + 6;
+  let spot = null;
   const t0 = performance.now();
   const frame = now => {
-    const f = Math.min(1, (now - t0) / (ms * 0.8)), pt = p.getPointAtLength(L * (forward ? f : 1 - f));
-    dot.setAttribute("cx", pt.x); dot.setAttribute("cy", pt.y);
-    dotLabel.setAttribute("x", Math.min(pt.x + 10, 420)); dotLabel.setAttribute("y", pt.y - 10);
+    const f = Math.max(0, Math.min(1, (now - t0) / (ms * 0.8))), pt = at(a + (b - a) * f);
+    dot.setAttribute("transform", `translate(${pt.x},${pt.y})`);
+    spot = labelSpot(pt, half, spot);
+    dotLabel.setAttribute("x", Math.max(half, Math.min(680 - half, pt.x + spot[0] * (half + 8)))); dotLabel.setAttribute("y", pt.y + spot[1]);
+    FLIGHT.f = f;
     if (f < 1) anim = requestAnimationFrame(frame);
+    else {                                                  // delivered: the packet turns green, a ring spreads at the receiver
+      dot.classList.add("landed");
+      ripple.setAttribute("cx", POS[e.dst][0]); ripple.setAttribute("cy", POS[e.dst][1]);
+      ripple.getBoundingClientRect(); ripple.classList.add("go");
+    }
+    if (typeof nfLive === "function") nfLive();
   };
-  anim = requestAnimationFrame(frame);
+  frame(t0);
 }
 
 function go(i, keepPlaying = playing) {
   cur = Math.min(log.length - 1, Math.max(0, i));
   clearTimeout(timer);
-  const e = log[cur];
-  showTwin(e); showCore(e); showBottom(e);                 // one entry drives all three areas
-  if (typeof nfRefresh === "function") nfRefresh();       // an open element panel follows the timeline
-  const ms = duration(e);
-  animateDot(e, ms);
+  const e = log[cur], ms = duration(e);
   playing = keepPlaying && cur < log.length - 1;
+  FLIGHT.i = cur; FLIGHT.f = e.kind === "msg" ? 0 : 1;
+  showTwin(e); showCore(e); showBottom(e);                 // one entry drives all three areas
+  if (typeof nfRefresh === "function") nfRefresh();       // the inspector and the live tracker follow the timeline
+  animateDot(e, ms);
   document.getElementById("play").textContent = playing ? "❚❚ Pause" : "▶ Play";
   if (playing) timer = setTimeout(() => go(cur + 1), ms);
 }
@@ -616,6 +799,7 @@ function resize() {                                         // keep the scene ce
   camera.updateProjectionMatrix();
 }
 addEventListener("resize", resize); resize();
+new ResizeObserver(resize).observe(stage);                  // the inspector column opening or closing changes the width
 // twin.html#route=3&frame=120 opens route 3 at entry 120 (also handy for screenshots)
 // #a3=6&ttt=2 opens with that handover rule (offset dB, time-to-trigger steps)
 {
@@ -832,14 +1016,30 @@ renderer.domElement.addEventListener("pointerup", e => {
 </script>
 <script>
 // ======================================================================= the 5G Network Visualiser: click to look inside
-// Click a network element (its role, its state at this point of the timeline, the messages it sent or received in
-// this flow), a message (the moving dot, the bottom line or a list row: a Wireshark-style packet view) or an
-// interface label (its protocol stack and the messages that use it). Every message is simulated by the twin; where
-// the class capture (data/pcap_examples.json, tools/extract_pcap.py) has the same message type, the decoded real
-// frame is shown too, with identifiers masked.
+// Everything in the network diagram can be clicked. What it shows opens in the inspector, a panel between the campus
+// and the diagram, so the diagram itself is never covered:
+//   a network element   its role, its live state (RRC / RM / CM state, sessions, tunnels), its protocol stacks, the
+//                       identities it holds and the messages it sent or received in this flow
+//   a message           (the moving packet, the bottom line, any list row) LIVE PACKET STATUS: not sent yet, in flight
+//                       or delivered; its journey hop by hop (a NAS message or a user packet crosses several
+//                       interfaces); what caused it and what it triggers; the radio link it used (Uu, from the
+//                       ray-traced twin); its encapsulation; its fields; and, where the class capture has the same
+//                       message type, the decoded real frame (identifiers masked)
+//   an interface label  its protocol stack and the messages that use it
+//   "Messages"          the message list of this flow or of the whole walk (all / to the UE / from the UE)
+// The bottom line always tracks the current message (journey and status); ◀ ▶ or the arrow keys step message by message.
+// Every message is simulated by the twin (net/); the real frames come from data/pcap_examples.json (tools/extract_pcap.py).
 const PCAP = DATA.pcap || { index: {}, frames: [], captures: [] };
 const hx = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const nrm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, "");
+// one-way delay per interface and processing time per element (ms): config.py DELAY_MS / PROCESSING_MS
+const NF_DELAY = DATA.delay_ms || { Uu: 1, N2: 1, N3: 1, N4: 1, N6: 5, N11: 1, SBI: 1, Xn: 1, internal: 0.1 };
+const NF_PROC = DATA.processing_ms ?? 0.5;
+const tS = t => (t / 1000).toFixed(4) + " s";
+const wb = s => hx(s).replace(/_/g, "_<wbr>");                 // long service names wrap at their underscores
+const elKind = n => n === "UE" ? "ue" : n.startsWith("gNB") ? "ran" : n === "UPF" ? "up" : n === "Internet" ? "dn" : "cp";
+const elBase = n => n.startsWith("gNB") ? "gNB" : n;
+const KIND_NAME = { ue: "User equipment", ran: "Radio access network", cp: "5G core · control plane", up: "5G core · user plane", dn: "Data network" };
 const ROLE = {
   UE: "The phone: finds a cell, connects over the radio (Uu), registers, and sends and receives the user's data.",
   gNB: "Base station: 3 radio sectors; runs RRC with the phone, passes NAS to the AMF (N2) and tunnels data to the UPF (N3).",
@@ -872,16 +1072,55 @@ const IFACE_INFO = {
   N11: "AMF ↔ SMF, service-based (HTTP/2 + JSON).", SBI: "Service-based interface between core functions (HTTP/2 + JSON).",
   Xn: "Between two gNBs: handover preparation and context release (XnAP over SCTP).",
 };
+const IFACE_ENDS = { Uu: "UE ↔ gNB", N1: "UE ↔ AMF", N2: "gNB ↔ AMF", N3: "gNB ↔ UPF", N4: "SMF ↔ UPF", N6: "UPF ↔ Internet", N11: "AMF ↔ SMF",
+  SBI: "AMF ↔ AUSF ↔ UDM, AMF ↔ NSSF", Xn: "gNB ↔ gNB" };
 const CAPTURE_ONLY = { N2: ["NGAP:NGSetupRequest", "NGAP:NGSetupResponse", "NGAP:UERadioCapabilityInfoIndication"],
   Uu: ["RRC:securityModeCommand", "RRC:securityModeComplete", "RRC:ueCapabilityEnquiry", "RRC:ueCapabilityInformation"] };
+// the protocol stacks inside each element, one per interface (top layer first): [interface, towards, layers]
+const SBI_STACK = ["JSON", "HTTP/2", "TCP", "IP"];
+const EL_STACK = {
+  UE: [["Uu", "signalling", ["NAS-5GS", "RRC", "PDCP", "RLC", "MAC", "PHY"]], ["Uu", "user data", ["App · IP", "SDAP", "PDCP", "RLC", "MAC", "PHY"]]],
+  gNB: [["Uu", "to the phone", ["RRC · SDAP", "PDCP", "RLC", "MAC", "PHY"]], ["N2", "to the AMF", ["NGAP", "SCTP", "IP"]], ["N3", "to the UPF", ["GTP-U", "UDP", "IP"]],
+        ["Xn", "to other gNBs", ["XnAP", "SCTP", "IP"]]],
+  AMF: [["N1", "to the phone", ["NAS-5GS"]], ["N2", "to the gNBs", ["NGAP", "SCTP", "IP"]], ["SBI", "to AUSF, NSSF", SBI_STACK], ["N11", "to the SMF", SBI_STACK]],
+  SMF: [["N11", "to the AMF", SBI_STACK], ["N4", "to the UPF", ["PFCP", "UDP", "IP"]]],
+  UPF: [["N3", "to the gNBs", ["GTP-U", "UDP", "IP"]], ["N4", "to the SMF", ["PFCP", "UDP", "IP"]], ["N6", "to the internet", ["IP (user data)"]]],
+  AUSF: [["SBI", "to AMF, UDM", SBI_STACK]], UDM: [["SBI", "to the AUSF", SBI_STACK], ["internal", "to its SIDF", ["function call"]]],
+  SIDF: [["internal", "inside the UDM", ["function call"]]], NSSF: [["SBI", "to the AMF", SBI_STACK]],
+  Internet: [["N6", "to the UPF", ["App", "TCP / UDP", "IP"]]],
+};
+const LAYER_COLOR = [[/^NAS/, "#7c3aed"], [/^RRC/, "#2563eb"], [/^(NGAP|XnAP)/, "#4f46e5"], [/^PFCP/, "#0891b2"], [/^(JSON|HTTP)/, "#4f46e5"], [/^GTP/, "#0d9488"],
+  [/^(App|IP \(user)/, "#059669"], [/^(SDAP|PDCP|RLC|MAC)/, "#64748b"], [/^PHY/, "#d97706"]];
+const layerColor = p => (LAYER_COLOR.find(([re]) => re.test(p)) || [0, "#94a3b8"])[1];
+// messages that nothing in the log causes: what starts them
+const ORIGIN = {
+  SSB: "every sector broadcasts it all the time", MIB: "every sector broadcasts it all the time", SIB1: "every sector broadcasts it all the time",
+  PUSCH: "the phone's app sends a request every few steps of the walk", MeasurementReport: "the twin's A3 rule fired: another sector stayed stronger for the time-to-trigger",
+  UEContextReleaseRequest: "the gNB's inactivity timer ran out (no data for a while)", IPPacket: "a server on the internet sends the phone a chat message",
+};
 
 function stackOf(e) {
-  if (e.interface !== "Uu") return [...(STACK[e.interface] || ["?"]), ...(e.nas ? ["NAS-5GS"] : [])];
+  if (e.interface !== "Uu") return [...(STACK[e.interface] || ["?"]).filter(p => e.message !== "EndMarker" || !/user data/.test(p)), ...(e.nas ? ["NAS-5GS"] : [])];
   const m = e.message;
   const s = m === "SSB" ? STACK.Uu.sync : /^(MIB|SIB1)$/.test(m) ? STACK.Uu.bcch : /^RandomAccess/.test(m) ? STACK.Uu.ra
     : /^(PUSCH|PDSCH)$/.test(m) ? STACK.Uu.data : m === "Paging" ? ["PHY", "MAC (PCH)", "RRC (paging)"] : STACK.Uu.rrc;
   return [...s, ...(e.nas ? ["NAS-5GS"] : [])];
 }
+// the same stack with what each layer carries: [{p: protocol, m: content, c: true on the layer that carries the message}]
+function layersOf(e) {
+  const st = stackOf(e).map(p => ({ p })), f = e.fields || {};
+  const carrier = { N2: /^NGAP/, Xn: /^XnAP/, N4: /^PFCP/, N11: /^JSON/, SBI: /^JSON/, N3: /^GTP-U/, N6: /^IP/, internal: /./ }[e.interface];
+  const c = e.interface !== "Uu" ? st.find(l => carrier && carrier.test(l.p))
+    : st.find(l => /^RRC/.test(l.p)) || (/^(PUSCH|PDSCH)$/.test(e.message) ? st[0] : st.filter(l => !/^NAS/.test(l.p)).at(-1));
+  if (c) { c.c = true; c.m = e.message.replace("GTP_U", "G-PDU").replace("EndMarker", "End Marker"); }
+  for (const l of st) {
+    if (/^NAS/.test(l.p)) l.m = pretty(e.nas);
+    if (/user data/.test(l.p) && f.from_ip) l.m = `${f.from_ip} → ${f.to_ip}${f.bytes ? ` · ${f.bytes} bytes` : ""}`;
+    if (/^GTP-U/.test(l.p) && (f.ul_teid ?? f.dl_teid) !== undefined) l.m += ` · TEID ${f.ul_teid ?? f.dl_teid}`;
+  }
+  return st;
+}
+const protoOf = e => ((layersOf(e).find(l => l.c) || { p: e.interface }).p).replace(/ \(.*/, "");
 
 // ---- which real frame matches a simulated message
 function capKeyFor(e) {
@@ -898,81 +1137,333 @@ function realFor(e) {                                       // {frame, key, nasM
   const f = PCAP.frames[best];
   return { f, key: k, nasMatch: !nas || f.types.some(([p, t]) => p === "NAS" && nrm(t) === nas) };
 }
-const chip = real => real ? `<span class="pk real">real capture</span>` : `<span class="pk sim">simulated (not in capture)</span>`;
+const chip = real => real ? `<span class="pk real">real capture</span>` : `<span class="pk sim">simulated</span>`;
 
-// ---- the panel
-const nfPanel = document.createElement("div"); nfPanel.id = "nfPanel"; nfPanel.hidden = true;
-$("netSection").append(nfPanel);
-let nfMode = null;                                          // ["element", name] | ["packet", index] | ["iface", name] | ["capture", key]
-function nfOpen(mode) { nfMode = mode; nfPanel.hidden = false; nfDraw(); }
-function nfClose() { nfMode = null; nfPanel.hidden = true; }
-function nfRefresh() { if (nfMode && nfMode[0] === "element") nfDraw(); }
-function nfDraw() {
-  const [kind, arg] = nfMode;
-  nfPanel.innerHTML = `<button class="nfx" title="close">×</button>` +
-    (kind === "element" ? elementHtml(arg) : kind === "packet" ? packetHtml(log[arg], arg) : kind === "iface" ? ifaceHtml(arg) : captureHtml(arg));
-  nfPanel.querySelector(".nfx").onclick = nfClose;
-  nfPanel.querySelectorAll("[data-pkt]").forEach(b => b.onclick = () => nfOpen(["packet", +b.dataset.pkt]));
-  nfPanel.querySelectorAll("[data-jump]").forEach(b => b.onclick = () => { go(+b.dataset.jump, false); nfOpen(["packet", +b.dataset.jump]); });
-  nfPanel.querySelectorAll("[data-el]").forEach(b => b.onclick = () => nfOpen(["element", b.dataset.el]));
-  nfPanel.querySelectorAll("[data-if]").forEach(b => b.onclick = () => nfOpen(["iface", b.dataset.if]));
-  nfPanel.querySelectorAll("[data-cap]").forEach(b => b.onclick = () => nfOpen(["capture", b.dataset.cap]));
+// ---- what belongs together in a log (computed once per timeline)
+// parent[j] = the message whose arrival made its receiver send message j (the sender handles a message PROCESSING ms
+// after it arrives, net/sim.py); kids = the reverse; first[name] = where a message or NAS name first appears.
+const NF_CACHE = new WeakMap();
+function nfIndex(lg) {
+  let c = NF_CACHE.get(lg);
+  if (c) return c;
+  const n = lg.length, parent = new Int32Array(n).fill(-1), kids = Array.from({ length: n }, () => []), num = new Int32Array(n), first = {};
+  let count = 0;
+  for (let j = 0; j < n; j++) {
+    const e = lg[j];
+    if (e.kind !== "msg") continue;
+    num[j] = ++count;
+    for (const m of [e.message, e.nas]) if (m && !(m in first)) first[m] = j;
+    let found = -1;
+    for (let i = j - 1; i >= 0 && lg[i].t >= e.t - 8; i--) {
+      const p = lg[i];
+      if (p.kind !== "msg" || p.dst !== e.src || Math.abs(p.t + (NF_DELAY[p.interface] ?? 1) + NF_PROC - e.t) > 0.02) continue;
+      if (found < 0) found = i;
+      if (e.nas && p.nas === e.nas) { found = i; break; }     // two arrive together: the one with the same NAS
+    }
+    if (found >= 0) { parent[j] = found; kids[found].push(j); }
+  }
+  c = { parent, kids, num, first, total: count };
+  NF_CACHE.set(lg, c);
+  return c;
 }
-
-// where the current flow began: flows can interleave briefly (the PDU session request goes out before the AMF has
-// the Registration Complete), so up to 3 messages of another flow do not end it
-function flowStart(i) {
+// the journey of message i: the hops that carry the same thing (the same NAS message, or the same user data on its
+// way to the server and back); one hop for everything else
+const NF_DATA = /^(PUSCH|PDSCH|GTP_U|IPPacket)$/;
+function nfJourney(i) {
+  const { parent, kids } = nfIndex(log);
+  const same = (a, b) => a.nas || b.nas ? a.nas === b.nas : NF_DATA.test(a.message) && NF_DATA.test(b.message);
+  let head = i;
+  while (parent[head] >= 0 && same(log[parent[head]], log[head])) head = parent[head];
+  const chain = [head];
+  for (let c = head; ;) {
+    const next = kids[c].find(j => same(log[c], log[j]));
+    if (next === undefined || chain.length > 12) break;
+    chain.push(next); c = next;
+  }
+  return chain;
+}
+function flowStart(i) {                                     // where this flow began; up to 3 messages of another flow do not end it
   let s = i, other = 0;
   for (let j = i - 1; j >= 0 && other <= 3; j--) {
     if (log[j].flow === log[i].flow) { s = j; other = 0; } else if (log[j].kind === "msg") other++;
   }
   return s;
 }
-function elementHtml(name) {
-  const e = log[cur], ids = e.ids, isG = name.startsWith("gNB"), site = isG ? name.slice(-1) : null;
-  const idRow = k => ids[k] === undefined ? "" : `<tr><td>${hx(DATA.identities[k])}</td><td>${hx(ids[k])}</td></tr>`;
-  const seen = m => log.slice(0, cur + 1).some(x => x.kind === "msg" && (x.message === m || x.nas === m));
-  const lines = [];
-  if (name === "UE") lines.push(["radio state", e.ue_state], ["serving sector", e.serving ? `${sn(e.serving)} on gNB-${e.serving[0]}` : "none"]);
-  if (isG) {
-    const serving = e.serving && e.serving[0] === site;
-    lines.push(["sectors", SECTORS.filter(s => s.site === site).map(s => `${sn(s.name)} (${s.az}°)`).join(", ")],
-               ["UE context", serving && e.ue_state === "RRC connected" ? "yes: this gNB serves the phone" : serving ? "camped here, no connection" : "no"]);
+function flowEnd(i) {
+  let s = i, other = 0;
+  for (let j = i + 1; j < log.length && other <= 3; j++) {
+    if (log[j].flow === log[i].flow) { s = j; other = 0; } else if (log[j].kind === "msg") other++;
   }
-  if (name === "AMF") lines.push(["registration", seen("RegistrationComplete") ? "registered (RM-REGISTERED)" : seen("RegistrationRequest") ? "in progress" : "not registered"],
-                                 ["connection", ids.amf_ue_ngap_id !== undefined ? "CM-CONNECTED" : seen("RegistrationAccept") ? "CM-IDLE" : "–"],
-                                 ["tracking area list", seen("RegistrationAccept") ? "001-01-1" : "–"]);
-  if (name === "AUSF") lines.push(["5G-AKA", seen("Nausf_UEAuthentication_Authenticate_Response") ? (seen("AuthenticationResponse") ? "done: RES* matched" : "challenge sent, waiting for RES*") : "not started"]);
-  if (name === "UDM" || name === "SIDF") lines.push(["SUCI → SUPI", seen("DeconcealSUCI_Response") ? "done" : "not yet"]);
-  if (name === "NSSF") lines.push(["allowed slice", seen("Nnssf_NSSelection_Get_Response") ? "SST 1 (eMBB)" : "not asked yet"]);
-  if (name === "SMF") lines.push(["PDU session", ids.pdu_session_id === undefined ? "none" : ids.dl_teid !== undefined ? "active (downlink tunnel set)" : "user plane paused / being set up"]);
-  if (name === "UPF") {
-    let buffered = 0;
-    for (const x of log.slice(flowStart(cur), cur + 1)) if (x.kind === "msg" && x.flow === 6 && e.flow === 6) {
-      if (x.message === "IPPacket" && x.dst === "UPF") buffered++;
-      if (x.message === "GTP_U" && x.src === "UPF") buffered = Math.max(0, buffered - 1);
-    }
-    lines.push(["tunnels (TEIDs)", `uplink ${ids.ul_teid ?? "–"} (UPF end) · downlink ${ids.dl_teid ?? "– (none: buffering)"} (gNB end)`],
-               ["buffered packets", ids.dl_teid === undefined && buffered ? `${buffered} (waiting for the phone)` : "0"],
-               ["NAT", ids.ue_ip ? `${ids.ue_ip}:port ↔ 198.51.100.7:port` : "–"]);
-  }
-  const s0 = flowStart(cur), msgs = [];
-  for (let i = s0; i <= cur; i++) { const x = log[i]; if (x.kind === "msg" && x.flow === e.flow && (x.src === name || x.dst === name)) msgs.push(i); }
-  const idKeys = IDS_OF[isG ? "gNB" : name] || [];
-  return `<div class="nfh">${hx(POS[name][2])} <span class="small">${hx(POS[name][3])}</span></div>
-    <div class="small">${ROLE[isG ? "gNB" : name]}</div>
-    <h3>State now <span class="small">(${log[cur].kind === "msg" ? hx(msgName(log[cur])) : "step " + log[cur].step}, flow ${e.flow})</span></h3>
-    <table>${lines.map(([k, v]) => `<tr><td>${hx(k)}</td><td>${hx(v)}</td></tr>`).join("")}${(isG && !(e.serving && e.serving[0] === site)) ? "" : idKeys.map(idRow).join("")}</table>
-    <h3>Messages in this flow so far (${msgs.length})</h3>
-    ${msgs.length ? `<table class="nfmsgs">${msgs.map(i => { const x = log[i], out = x.src === name;
-      return `<tr><td>${out ? "→" : "←"}</td><td><a data-pkt="${i}">${hx(msgName(x))}</a><div class="small">${out ? "to" : "from"} ${hx(out ? x.dst : x.src)} · ${hx(x.interface)}</div></td>
-        <td>${chip(!!realFor(x))}</td><td><button data-jump="${i}" title="move the animation here">jump to</button></td></tr>`; }).join("")}</table>`
-      : `<div class="small">None yet in flow ${e.flow}.</div>`}`;
+  return s;
 }
 
-function fieldsHtml(e) {
+// ---- live packet status: where message i is right now on the timeline
+const pkState = i => i > cur ? "future" : i === cur && FLIGHT.i === cur && FLIGHT.f < 1 ? "fly" : "done";
+function pkText(i, st) {
+  const e = log[i];
+  return st === "future" ? "Not sent yet" : st === "done" ? `Delivered to ${e.dst}`
+    : `In flight ${e.interface === "internal" ? "inside the UDM" : "on " + e.interface} · ${Math.round(FLIGHT.f * 100)} %`;
+}
+function journeyHtml(chain, here, big) {
+  const first = log[chain[0]];
+  let h = `<span class="jr${big ? " big" : ""}${chain.length > 3 ? " long" : ""}"><a class="jn" data-el="${hx(first.src)}" data-from="${chain[0]}">${hx(first.src)}</a>`;
+  for (const i of chain) {
+    const e = log[i];
+    h += `<a class="jh${i === here ? " here" : ""}" data-hop="${i}" title="${hx(msgName(e))} · ${hx(e.interface)}"><i>${hx(e.interface === "internal" ? "" : e.interface)}</i><b></b></a>` +
+         `<a class="jn" data-el="${hx(e.dst)}" data-after="${i}">${hx(e.dst)}</a>`;
+  }
+  return h + `</span>`;
+}
+// called on every animation frame while a message flies, and after every step of the timeline
+function nfLive() {
+  if (!log) return;
+  for (const h of document.querySelectorAll("[data-hop]")) {
+    const s = pkState(+h.dataset.hop);
+    h.dataset.st = s; h.style.setProperty("--p", s === "done" ? 1 : s === "fly" ? FLIGHT.f.toFixed(3) : 0);
+  }
+  for (const n of document.querySelectorAll("[data-after]")) n.classList.toggle("got", pkState(+n.dataset.after) === "done");
+  for (const n of document.querySelectorAll("[data-from]")) n.classList.toggle("got", pkState(+n.dataset.from) !== "future");
+  for (const d of document.querySelectorAll("[data-dot]")) d.dataset.st = pkState(+d.dataset.dot);
+  for (const h of document.querySelectorAll("[data-hero]")) h.dataset.st = pkState(+h.dataset.hero);
+  for (const s of document.querySelectorAll("[data-status]")) {
+    const i = +s.dataset.status, st = pkState(i), text = pkText(i, st);
+    s.dataset.st = st;
+    if (s.textContent !== text) s.textContent = text;
+  }
+}
+
+// ---- the state of an element at this point of the timeline
+// machines: [label, states, index of the state it is in]; facts: [label, value]; led: "on" | "warn" | "" (the dot on the node)
+function radioAt(k, serving) {
+  const rs = route.rsrp[k], si = NAMES.indexOf(serving);
+  if (!rs || si < 0) return null;
+  const next = NAMES.map((n, i) => i).filter(i => i !== si).sort((a, b) => rs[b] - rs[a])[0];
+  const los = !route.los[k][si] ? "blocked (no line of sight)" : route.los_clear && !route.los_clear[k][si] ? "line of sight through trees" : "line of sight";
+  return { rsrp: rs[si], los, next, nextRsrp: rs[next], twin: route.twin_mbps?.[k], fixed: route.b1_mbps?.[k] };
+}
+const rsrpWord = v => v >= -80 ? "excellent" : v >= -90 ? "good" : v >= -100 ? "fair" : v >= -110 ? "weak" : "very weak";
+function elState(name, full) {
+  const e = log[cur], ids = e.ids, X = nfIndex(log), seen = m => X.first[m] !== undefined && X.first[m] <= cur;
+  const isG = name.startsWith("gNB"), site = isG ? name.slice(-1) : null, M = [], F = [];
+  const conn = e.ue_state === "RRC connected", idle = e.ue_state === "RRC idle";
+  const sess = ids.pdu_session_id !== undefined && ids.ue_ip !== undefined, upOn = ids.dl_teid !== undefined;
+  let led = "";
+  if (name === "UE") {
+    M.push(["RRC", ["RRC_IDLE", "RRC_CONNECTED"], conn ? 1 : 0], ["Registration (RM)", ["RM-DEREGISTERED", "RM-REGISTERED"], seen("RegistrationAccept") ? 1 : 0],
+           ["Connection (CM)", ["CM-IDLE", "CM-CONNECTED"], ids.ran_ue_ngap_id !== undefined ? 1 : 0], ["PDU session", ["none", "user plane paused", "active"], !sess ? 0 : upOn ? 2 : 1]);
+    led = conn ? "on" : idle ? "warn" : "";
+    if (full) {
+      const r = e.serving && radioAt(e.step, e.serving);
+      F.push(["phone", e.ue_state === "off" ? "switching on: cell search and random access" : idle ? "idle: camps on a sector, listens for paging" : "connected: has a C-RNTI and radio bearers"],
+             ["serving sector", e.serving ? `${sn(e.serving)} on gNB-${e.serving[0]}` : "none yet"]);
+      if (r) F.push(["RSRP here", `${r.rsrp.toFixed(1)} dBm · ${rsrpWord(r.rsrp)} · ${r.los}`], ["position", `step ${e.step} · ${e.step * DATA.step_m} m along the walk`]);
+      if (r && r.twin !== undefined) F.push(["data rate here", `${r.twin.toFixed(1)} Mbps with the Twin allocation · ${r.fixed.toFixed(1)} Mbps with ${stn("B1")}`]);
+    }
+  } else if (isG) {
+    const serving = !!e.serving && e.serving[0] === site;
+    M.push(["UE context", ["none", "phone camps here (idle)", "RRC connected"], !serving ? 0 : conn ? 2 : 1]);
+    led = !serving ? "" : conn ? "on" : "warn";
+    if (full) {
+      F.push(["sectors", SECTORS.filter(s => s.site === site).map(s => `${sn(s.name)} (${s.az}°)`).join(", ")], ["serving sector now", serving ? sn(e.serving) : "–"]);
+      if (e.flow === 5) for (let i = flowStart(cur); i <= cur; i++) if (log[i].message === "HandoverRequest" && (log[i].src === name || log[i].dst === name))
+        F.push(["handover role", log[i].src === name ? `source: hands the phone to ${log[i].dst}` : `target: takes the phone from ${log[i].src}`]);
+    }
+  } else if (name === "AMF") {
+    const cm = ids.amf_ue_ngap_id !== undefined, reg = seen("RegistrationComplete");
+    M.push(["Registration (RM)", ["RM-DEREGISTERED", "registering", "RM-REGISTERED"], reg ? 2 : seen("RegistrationRequest") ? 1 : 0], ["Connection (CM)", ["CM-IDLE", "CM-CONNECTED"], cm ? 1 : 0]);
+    led = cm ? "on" : reg ? "warn" : "";
+    F.push(["tracking area list", seen("RegistrationAccept") ? "001-01-1" : "–"]);
+  } else if (name === "AUSF") {
+    const s = seen("AuthenticationResponse") ? 2 : seen("Nausf_UEAuthentication_Authenticate_Response") ? 1 : 0;
+    M.push(["5G-AKA", ["not started", "challenge sent", "RES* matched"], s]); led = ["", "warn", "on"][s];
+  } else if (name === "UDM" || name === "SIDF") {
+    const d = seen("DeconcealSUCI_Response");
+    M.push(["SUCI → SUPI", ["not yet", "done"], d ? 1 : 0]);
+    if (name === "UDM") M.push(["Authentication vector", ["not made", "RAND, AUTN, XRES* sent"], seen("Nudm_UEAuthentication_Get_Response") ? 1 : 0]);
+    led = d ? "on" : "";
+  } else if (name === "NSSF") {
+    const a = seen("Nnssf_NSSelection_Get_Response");
+    M.push(["Allowed slice", ["not asked yet", "SST 1 (eMBB)"], a ? 1 : 0]); led = a ? "on" : "";
+  } else if (name === "SMF") {
+    const s = ids.pdu_session_id === undefined ? 0 : upOn ? 2 : 1;
+    M.push(["PDU session", ["none", "paused / being set up", "active"], s]); led = ["", "warn", "on"][s];
+  } else if (name === "UPF") {
+    const has = ids.ul_teid !== undefined, s = !has ? 0 : upOn ? 2 : 1;
+    M.push(["Uplink rule", ["none", "N3 → N6: forward + NAT"], has ? 1 : 0], ["Downlink rule", ["none", "buffer", "N6 → N3: forward"], s]); led = ["", "warn", "on"][s];
+    if (full) {
+      let buffered = 0;
+      for (const x of log.slice(flowStart(cur), cur + 1)) if (x.kind === "msg" && x.flow === 6 && e.flow === 6) {
+        if (x.message === "IPPacket" && x.dst === "UPF") buffered++;
+        if (x.message === "GTP_U" && x.src === "UPF") buffered = Math.max(0, buffered - 1);
+      }
+      F.push(["tunnels (TEIDs)", `uplink ${ids.ul_teid ?? "–"} (UPF end) · downlink ${ids.dl_teid ?? "– (none)"} (gNB end)`],
+             ["buffered packets", ids.dl_teid === undefined && buffered ? `${buffered} (waiting for the phone)` : "0"],
+             ["NAT", ids.ue_ip ? `${ids.ue_ip}:port ↔ 198.51.100.7:port` : "–"]);
+    }
+  } else if (name === "Internet") {
+    led = seen("IPPacket") ? "on" : "";
+    if (full) F.push(["packets so far", String(log.slice(0, cur + 1).filter(x => x.kind === "msg" && x.message === "IPPacket").length)]);
+  }
+  return { machines: M, facts: F, led };
+}
+
+// ---- the inspector
+const insp = $("insp"), mainEl = document.querySelector("main");
+let nfMode = null;          // {kind: "element", name} | {kind: "packet", i, live} | {kind: "iface", name} | {kind: "capture", key} | {kind: "list"}
+let nfHist = [], nfLog = null;
+// While the mouse button is down in the inspector or on the bottom line, their content is not replaced (a click on
+// something that is swapped out between press and release would be lost while the walk plays); it catches up on release.
+let nfHeld = false, nfStale = false;
+for (const box of [insp, document.querySelector("footer")]) box.addEventListener("pointerdown", () => { nfHeld = true; });
+addEventListener("pointerup", () => { if (!nfHeld) return; nfHeld = false; setTimeout(() => { if (nfStale) nfRefresh(); }, 0); });
+addEventListener("pointercancel", () => { nfHeld = false; });
+const NF_LIST = { scope: "flow", dir: "all", sig: "" };
+function nfLayout() {                                       // wide: a third column, and the diagram keeps its width; else over the campus
+  let cls = "";
+  if (!insp.hidden && innerWidth > 900) {
+    const W = mainEl.clientWidth - 32, netw = Math.round((W - 12) * 0.4);
+    mainEl.style.setProperty("--netw", netw + "px");
+    cls = W - netw - 384 - 24 >= 300 ? "insp3" : "inspOver";
+  }
+  mainEl.classList.toggle("insp3", cls === "insp3"); mainEl.classList.toggle("inspOver", cls === "inspOver");
+}
+addEventListener("resize", nfLayout);
+const sameMode = (a, b) => a && b && a.kind === b.kind && a.name === b.name && a.i === b.i && a.key === b.key;
+function nfOpen(mode, from) {                               // from "panel": a click inside the inspector, so Back returns
+  if (tab !== "mobility") return;
+  if (from === "panel" && nfMode) { if (sameMode(nfMode, mode)) return; nfHist.push(nfMode); } else if (from !== "back") nfHist = [];
+  nfMode = mode; insp.hidden = false;
+  nfLayout(); nfDraw(true); nfMark();
+  if (innerWidth <= 900) insp.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+function nfClose() { nfMode = null; nfHist = []; insp.hidden = true; nfLayout(); nfMark(); }
+function nfDraw(top) {
+  const m = nfMode, body = insp.querySelector(".ib"), keep = top ? 0 : body.scrollTop;
+  insp.querySelector(".crumb").textContent = { element: "Network element", packet: "Message", iface: "Interface", capture: "In the class capture", list: "Messages" }[m.kind];
+  insp.querySelector("[data-act=back]").hidden = !nfHist.length;
+  body.innerHTML = m.kind === "element" ? elementHtml(m.name) : m.kind === "packet" ? packetHtml(m.i) : m.kind === "iface" ? ifaceHtml(m.name)
+    : m.kind === "list" ? listHtml() : captureHtml(m.key);
+  body.scrollTop = keep;
+  if (m.kind === "list" && top) body.querySelector(".mr.cur")?.scrollIntoView({ block: "center" });
+  nfLive();
+}
+// what is selected, shown in the diagram: the element, the interface's links, or the message's whole journey
+function nfMark() {
+  Object.values(nodeEl).forEach(g => g.classList.remove("sel"));
+  Object.values(linkEl).forEach(p => p.classList.remove("sel", "jrn"));
+  Object.values(labelEl).forEach(t => t.classList.remove("sel"));
+  dot.classList.remove("sel");
+  const m = nfMode;
+  if (!m || !log) return;
+  if (m.kind === "element") nodeEl[m.name]?.classList.add("sel");
+  if (m.kind === "iface") for (const [a, b, iface] of LINKS) if (iface === m.name) {
+    const k = iface === "N1" ? "N1" : key(a, b);
+    linkEl[k].classList.add("sel"); labelEl[k]?.classList.add("sel");
+  }
+  if (m.kind === "packet" && log[m.i]) {
+    for (const j of nfJourney(m.i)) linkEl[key(log[j].src, log[j].dst)]?.classList.add("jrn");
+    if (m.i === cur) dot.classList.add("sel");
+  }
+}
+// go() calls this after every step of the timeline
+function nfRefresh() {
+  if (!log) return;
+  if (nfLog !== log) {                                      // another route or handover rule: indexes mean something else now
+    nfLog = log; nfHist = []; NF_LIST.sig = "";
+    if (nfMode && nfMode.kind === "packet") { nfMode = { kind: "packet", i: cur, live: true }; if (log[cur].kind === "msg") nfDraw(true); else nfClose(); }
+  }
+  const e = log[cur];
+  for (const name in nodeEl) {
+    const s = elState(name), on = s.machines.map(([k, st, i]) => `${k}: ${st[i]}`).join(" · ");
+    ledEl[name].dataset.st = s.led; ledEl[name].firstChild.textContent = on;
+  }
+  subEl.UE.textContent = e.ue_state === "off" ? "switching on" : e.ue_state;
+  for (const s of "ABC") subEl["gNB-" + s].textContent = `site ${s}` + (e.serving && e.serving[0] === s ? " · serving" : "");
+  if (nfHeld) { nfStale = true; nfMark(); nfLive(); return; }
+  nfStale = false;
+  $("track").innerHTML = e.kind !== "msg" ? "" : journeyHtml(nfJourney(cur), cur, false) + `<span class="pst" data-status="${cur}"></span>`;
+  const m = nfMode;
+  if (m) {
+    if (m.kind === "packet") {
+      if (m.live && e.kind === "msg" && m.i !== cur) { m.i = cur; nfDraw(false); }
+      else if ($("pkHero")) $("pkHero").innerHTML = heroHtml(m.i);
+    } else if (m.kind === "list") listRefresh();
+    else if (m.kind !== "capture") nfDraw(false);
+  }
+  nfMark(); nfLive();
+}
+function nfStep(d) {                                        // to the previous / next message (walk steps are skipped)
+  let i = cur + d;
+  while (i >= 0 && i < log.length && log[i].kind !== "msg") i += d;
+  if (i < 0 || i >= log.length) return;
+  if (nfMode && nfMode.kind === "packet") nfMode.live = true;
+  go(i, false);
+}
+function nfDo(act) {
+  const m = nfMode;
+  if (act === "close") nfClose();
+  else if (act === "back") { const b = nfHist.pop(); if (b) { if (b.kind === "packet" && b.live && log[cur].kind === "msg") b.i = cur; nfOpen(b, "back"); } }
+  else if (act === "prev") nfStep(-1);
+  else if (act === "next") nfStep(1);
+  else if (act === "replay") go(cur, false);
+  else if (act === "play") $("play").click();
+  else if (act === "jump" && m) { m.live = true; go(m.i, false); }
+  else if (act === "follow" && m) { m.live = true; if (log[cur].kind === "msg") m.i = cur; nfDraw(true); nfMark(); }
+  else if (act === "list") nfOpen({ kind: "list" });
+}
+function nfClick(ev, from) {
+  const t = ev.target.closest("[data-act],[data-jump],[data-pkt],[data-hop],[data-el],[data-if],[data-cap],[data-scope],[data-dir]");
+  if (!t) return;
+  const d = t.dataset;
+  if (d.act) nfDo(d.act);
+  else if (d.jump !== undefined) { go(+d.jump, false); nfOpen({ kind: "packet", i: +d.jump, live: true }, from); }
+  else if ((d.pkt ?? d.hop) !== undefined) { const i = +(d.pkt ?? d.hop); nfOpen({ kind: "packet", i, live: i === cur }, from); }
+  else if (d.el) nfOpen({ kind: "element", name: d.el }, from);
+  else if (d.if) nfOpen({ kind: "iface", name: d.if }, from);
+  else if (d.cap) nfOpen({ kind: "capture", key: d.cap }, from);
+  else if (d.scope || d.dir) { if (d.scope) NF_LIST.scope = d.scope; if (d.dir) NF_LIST.dir = d.dir; nfDraw(true); }
+}
+insp.addEventListener("click", ev => nfClick(ev, "panel"));
+$("track").addEventListener("click", ev => nfClick(ev));
+$("stepBtns").addEventListener("click", ev => nfClick(ev));
+$("msgListBtn").addEventListener("click", () => nfMode && nfMode.kind === "list" ? nfClose() : nfOpen({ kind: "list" }));
+
+// ---- a network element
+const smHtml = ([k, states, on]) => `<div class="sm"><span class="k">${hx(k)}</span><span class="sts">${states.map((s, j) =>
+  `<span class="st${j === on ? " on" + (on === 0 ? " off" : on < states.length - 1 ? " warn" : "") : ""}">${hx(s)}</span>`).join(`<span class="arr">›</span>`)}</span></div>`;
+function elementHtml(name) {
+  const e = log[cur], isG = name.startsWith("gNB"), base = elBase(name), kind = elKind(name), S = elState(name, true);
+  const now = e.kind === "msg" && (e.src === name || e.dst === name) ? e : null, isData = now && /^(PUSCH|PDSCH)$/.test(now.message);
+  const lit = (iface, sub) => now && ((iface === now.interface && (name !== "UE" || (sub === "user data") === isData)) || (iface === "N1" && now.nas && base !== "gNB"));
+  const idKeys = (isG && !(e.serving && e.serving[0] === name.slice(-1)) ? [] : IDS_OF[base] || []).filter(k => e.ids[k] !== undefined);
+  const s0 = flowStart(cur), msgs = [];
+  for (let i = s0; i <= cur; i++) { const x = log[i]; if (x.kind === "msg" && x.flow === e.flow && (x.src === name || x.dst === name)) msgs.push(i); }
+  return `<span class="kindtag k-${kind}">${KIND_NAME[kind]}</span>
+    <div class="ttl">${hx(POS[name][2])} <span class="small" style="font-weight:400">${hx(POS[name][3])}</span></div>
+    <p class="lead">${ROLE[base]}</p>
+    <h3>Live state</h3><div class="small" style="margin:-3px 0 6px">now: ${e.kind === "msg" ? wb(msgName(e)) : "walking, step " + e.step} · t = ${tS(e.t)}</div>
+    ${S.machines.map(smHtml).join("")}
+    ${S.facts.length ? `<table style="margin-top:6px">${S.facts.map(([k, v]) => `<tr><td>${hx(k)}</td><td>${hx(v)}</td></tr>`).join("")}</table>` : ""}
+    <h3>Protocol stacks <span class="small">one per interface${now ? "; the one in use now is marked" : ""}</span></h3>
+    <div class="stacks">${EL_STACK[base].map(([iface, sub, layers]) => `<div class="stk${lit(iface, sub) ? " lit" : ""}">
+      <span class="hd">${iface === "internal" ? "<b>internal</b>" : `<a data-if="${iface}">${iface}</a>`}${hx(sub)}</span>
+      ${layers.map(p => `<span class="lyr" style="--lc:${layerColor(p)}">${hx(p)}</span>`).join("")}</div>`).join("")}</div>
+    <h3>Identities it holds now</h3>
+    ${idKeys.length ? `<table>${idKeys.map(k => `<tr><td>${hx(DATA.identities[k])}</td><td class="mono">${hx(e.ids[k])}</td></tr>`).join("")}</table>`
+      : `<div class="small">${base === "Internet" ? "None: the internet only sees the UPF's public address." : "None for this phone right now."}</div>`}
+    <h3>Its messages in this flow so far (${msgs.length}) <span class="small">flow ${e.flow}: ${hx(DATA.flows[e.flow])}</span></h3>
+    ${msgs.length ? `<div class="mlist" style="margin-top:0">${msgs.map(i => { const x = log[i], out = x.src === name;
+      return `<a class="mr${i === cur ? " cur" : ""}" data-pkt="${i}"><span class="n">${out ? "out →" : "← in"}</span>
+        <span><span class="m">${wb(msgName(x))}</span><br><span class="w">${out ? "to" : "from"} ${hx(out ? x.dst : x.src)} · ${hx(x.interface)}</span></span>
+        <span class="t">${chip(!!realFor(x))}</span></a>`; }).join("")}</div>`
+      : `<div class="small">None yet in this flow.</div>`}`;
+}
+
+// ---- a message
+function fieldsHtml(e, fresh = []) {
   const f = e.fields || Object.fromEntries((e.carries || []).map(k => [k, e.ids[k]]));
-  const rows = Object.entries(f).map(([k, v]) => `<tr><td>${hx(DATA.identities[k] || k.replace(/_/g, " "))}</td><td>${hx(snText(Array.isArray(v) ? v.join(", ") : v))}</td></tr>`);
+  const rows = Object.entries(f).map(([k, v]) => `<tr class="${k in DATA.identities ? "carried" : ""}"><td>${hx(DATA.identities[k] || k.replace(/_/g, " "))}</td>
+    <td class="mono">${hx(snText(Array.isArray(v) ? v.join(", ") : v))}${fresh.includes(k) ? ` <span class="pk new">new</span>` : ""}</td></tr>`);
   return rows.length ? `<table>${rows.join("")}</table>` : `<div class="small">No fields.</div>`;
 }
 function treeHtml(nodes, depth = 0, openTo = 1) {                 // open down to depth openTo
@@ -982,62 +1473,179 @@ function treeHtml(nodes, depth = 0, openTo = 1) {                 // open down t
 }
 function realHtml(f, note) {
   const main = f.tree.findIndex(([t]) => /^(NGAP|F1AP|GTP-U)/.test(t));
-  return `<h3>Real packet from class capture (frame #${f.frame})</h3>
+  return `<h3>Real packet from the class capture <span class="small">frame #${f.frame}</span></h3>
     <div class="small">${hx(f.capture)} · ${f.length} bytes · ${hx(f.protocols)}${note ? "<br>" + note : ""}<br>Identifiers and IP addresses masked.</div>
     <div class="wstree">${f.tree.map(([t, kids], i) => `<details ${i === main ? "open" : ""}><summary><b>${hx(t)}</b></summary>${treeHtml(kids, 1, i === main ? 12 : 1)}</details>`).join("")}</div>`;
 }
-function packetHtml(e, i) {
+function encapHtml(e) {
+  const L = layersOf(e);
+  let h = "";
+  for (let k = L.length - 1; k >= 0; k--)
+    h = `<div class="ly${k === L.length - 1 ? " leaf" : ""}" style="--lc:${layerColor(L[k].p)}"><span><b>${hx(L[k].p)}</b>${L[k].m ? `<em>${hx(L[k].m)}</em>` : ""}</span>${h}</div>`;
+  return `<div class="encap">${h}</div>`;
+}
+function heroHtml(i) {
+  const e = log[i], chain = nfJourney(i), st = pkState(i), live = nfMode && nfMode.kind === "packet" && nfMode.live, d = NF_DELAY[e.interface] ?? 1;
+  const first = log[chain[0]], last = log[chain.at(-1)], there = first.src === last.dst && chain.length > 2 ? ` → ${log[chain[chain.length / 2 - 1 | 0]].dst}` : "";
+  const what = e.nas ? `NAS ${pretty(e.nas)}` : "the user's IP packet";
+  return `<div class="hero" data-hero="${i}" data-st="${st}">
+    <div class="herotop"><span class="lbl">Live packet status</span><span class="badge2${live ? " live" : ""}">${live ? "● LIVE" : i < cur ? "earlier message" : i > cur ? "later message" : "pinned"}</span></div>
+    <div class="bigst"><span class="pst" data-status="${i}" data-st="${st}">${hx(pkText(i, st))}</span></div>
+    ${journeyHtml(chain, i, true)}
+    ${chain.length > 1 ? `<div class="hopline">Hop ${chain.indexOf(i) + 1} of ${chain.length}: ${hx(what)} travels ${hx(first.src)}${hx(there)} → ${hx(last.dst)}</div>` : ""}
+    <div class="times" title="The delays are the twin's assumptions (config.py DELAY_MS); the animation is slowed down so it can be followed.">
+      <span><b>sent</b><span>${tS(e.t)}</span></span><span><b>${hx(e.interface)} · one way</b><span>${d} ms (assumed)</span></span><span><b>arrives</b><span>${tS(e.t + d)}</span></span></div>
+    <div class="ctl">${live
+      ? `<button data-act="prev" title="previous message (←)">◀ Prev</button><button data-act="replay" title="send it again">↻ Replay</button>
+         <button data-act="play" class="primary">${playing ? "❚❚ Pause" : "▶ Play"}</button><button data-act="next" title="next message (→)">Next ▶</button>`
+      : `<button data-act="jump" class="primary">Jump to this message</button><button data-act="follow">● Follow live</button>`}</div></div>`;
+}
+function chainHtml(i) {
+  const X = nfIndex(log), chain = nfJourney(i), head = chain[0], tail = chain.at(-1), cause = X.parent[head];
+  const then = X.kids[tail].filter(j => !chain.includes(j));
+  const row = (j, role) => { const x = log[j];
+    return `<a class="cz${j === i ? " here" : ""}" data-pkt="${j}"><span class="rail"><i data-dot="${j}"></i></span>
+      <span><span class="role">${role}</span><span class="who">${hx(x.src)} → ${hx(x.dst)}</span> <span class="ifc">${hx(x.interface)}</span><br><span class="what">${wb(msgName(x))}</span></span>
+      <span class="when">${tS(x.t)}</span></a>`; };
+  const plain = (role, text) => `<div class="cz" style="cursor:default"><span class="rail"><i></i></span><span><span class="role">${role}</span><span class="what">${hx(text)}</span></span><span></span></div>`;
+  return `<div>${cause >= 0 ? row(cause, "caused by") : plain("started by", ORIGIN[log[head].message] || "an event in the twin, not a message")}
+    ${chain.map((j, n) => row(j, j === i ? "this message" : chain.length > 1 ? `the same ${log[j].nas ? "NAS message" : "data"}, hop ${n + 1}` : "")).join("")}
+    ${then.length ? then.map(j => row(j, `then ${log[j].src} sends`)).join("") : plain("then", `${log[tail].dst} takes it in; nothing is sent back`)}</div>`;
+}
+function newIds(i) {                                        // identities this message uses for the first time (or changes)
+  const prev = i > 0 ? log[i - 1].ids : {};
+  return (log[i].carries || []).filter(k => prev[k] !== log[i].ids[k]);
+}
+function radioHtml(e) {
+  const r = e.serving && radioAt(e.step, e.serving);
+  if (!r) return "";
+  const pct = Math.max(0, Math.min(100, (r.rsrp + 130) / 70 * 100)), gap = r.rsrp - r.nextRsrp;
+  return `<h3>The radio link it used <span class="small">from the ray-traced twin</span></h3>
+    <table><tr><td>sector</td><td><b style="color:${siteColor(e.serving[0])}">${sn(e.serving)}</b> on gNB-${e.serving[0]} · ${e.dst === "UE" ? "downlink" : "uplink"}</td></tr>
+    <tr><td>RSRP at the phone</td><td><b>${r.rsrp.toFixed(1)} dBm</b> · ${rsrpWord(r.rsrp)}</td></tr>
+    <tr><td>path</td><td>${r.los}</td></tr>
+    <tr><td>next best sector</td><td>${sn(NAMES[r.next])} at ${r.nextRsrp.toFixed(1)} dBm (${Math.abs(gap).toFixed(1)} dB ${gap >= 0 ? "weaker" : "stronger"})</td></tr>
+    <tr><td>where</td><td>step ${e.step} · ${e.step * DATA.step_m} m along the walk</td></tr>
+    ${r.twin !== undefined ? `<tr><td>data rate here</td><td>${r.twin.toFixed(1)} Mbps with the Twin allocation · ${r.fixed.toFixed(1)} Mbps with ${stn("B1")}</td></tr>` : ""}</table>
+    <div class="meter"><i style="left:${pct.toFixed(1)}%"></i></div><div class="meterticks"><span>−130</span><span>RSRP (dBm)</span><span>−60</span></div>`;
+}
+function packetHtml(i) {
+  const e = log[i];
   if (!e || e.kind !== "msg") return `<div class="small">This step is not a message.</div>`;
-  const r = realFor(e), onF1 = r && /^RRC:|^F1AP:/.test(r.key);
+  const X = nfIndex(log), r = realFor(e), onF1 = r && /^RRC:|^F1AP:/.test(r.key), fresh = newIds(i);
   const realNas = r && r.f.types.filter(([p]) => p === "NAS").map(([, t]) => t);
   const note = !r ? "" : [onF1 ? "Captured on F1 (between the gNB's DU and CU), inside F1AP; on the air (Uu) the same RRC message is carried by PDCP/RLC/MAC." : "",
     e.nas && !r.nasMatch ? `Same ${hx(r.key.split(":")[0])} message type; in the capture it carries ${hx(realNas.join(", ") || "no NAS")}, not ${hx(pretty(e.nas))}.` : ""].filter(Boolean).join(" ");
-  const nasReal = e.nas && capNasKey(e.nas);
-  return `<div class="nfh">${hx(msgName(e))}</div>
-    <div class="small">${hx(e.src)} → ${hx(e.dst)} · <a data-if="${hx(e.interface === "internal" ? "SBI" : e.interface)}">${hx(e.interface)}</a> · flow ${e.flow} · t = ${(e.t / 1000).toFixed(3)} s</div>
-    <div style="margin:6px 0">${chip(!!r)}${r ? ` <span class="small">frame #${r.f.frame}</span>` : ""}${e.nas ? ` · NAS ${hx(pretty(e.nas))}: ${chip(!!nasReal)}` : ""}</div>
-    <h3>Protocol stack</h3><div class="stack">${stackOf(e).map(p => `<span>${hx(p)}</span>`).join("")}</div>
-    <h3>Fields (simulated by the twin)</h3>${fieldsHtml(e)}
-    <div class="small">${hx(snText(e.note))}</div>
-    ${r ? realHtml(r.f, note) : `<h3>Real packet</h3><div class="small">No ${hx(e.message.replace("GTP_U", "GTP-U"))} in the class capture (it has NGAP/NAS on N2, F1AP/RRC on F1 and GTP-U on N3; no PFCP, SBI, Xn or radio-only messages): simulated only.</div>`}
-    ${i === cur ? "" : `<p><button data-jump="${i}">jump to this message</button></p>`}`;
+  const nasReal = e.nas && capNasKey(e.nas), iface = e.interface === "internal" ? "SBI" : e.interface;
+  return `<span class="kindtag">${hx(protoOf(e))}</span>${e.nas ? `<span class="kindtag nas">carries NAS</span>` : ""}<span class="badge" style="background:var(--f${e.flow})">Flow ${e.flow}: ${hx(DATA.flows[e.flow])}</span>
+    <div class="ttl" style="margin-top:4px">${wb(e.message.replace("GTP_U", "GTP-U"))}</div>
+    ${e.nas ? `<div class="sub">NAS: <b style="color:var(--n1)">${hx(pretty(e.nas))}</b></div>` : ""}
+    <div class="sub"><a data-el="${hx(e.src)}">${hx(e.src)}</a> → <a data-el="${hx(e.dst)}">${hx(e.dst)}</a> · <a data-if="${hx(iface)}">${hx(e.interface)}</a> · message ${X.num[i]} of ${X.total}</div>
+    <p class="lead">${hx(snText(e.note))}</p>
+    <div id="pkHero">${heroHtml(i)}</div>
+    <h3>Cause and effect</h3>${chainHtml(i)}
+    ${e.interface === "Uu" ? radioHtml(e) : ""}
+    <h3>Encapsulation <span class="small">outermost layer first</span></h3>${encapHtml(e)}
+    <h3>Fields <span class="small">simulated by the twin${(e.carries || []).length ? "; identities are tinted" : ""}</span></h3>${fieldsHtml(e, fresh)}
+    <div style="margin-top:12px">${chip(!!r)}${r ? ` <span class="small">frame #${r.f.frame}</span>` : ""}${e.nas ? ` <span class="small">· NAS ${hx(pretty(e.nas))}:</span> ${chip(!!nasReal)}` : ""}</div>
+    ${r ? realHtml(r.f, note) : `<div class="small" style="margin-top:4px">No ${hx(e.message.replace("GTP_U", "GTP-U"))} in the class capture (it has NGAP/NAS on N2, F1AP/RRC on F1 and GTP-U on N3; no PFCP, SBI, Xn or radio-only messages).</div>`}`;
 }
 function captureHtml(k) {
   const f = PCAP.frames[PCAP.index[k][0]];
-  return `<div class="nfh">${hx(k.split(":")[1])} <span class="small">${hx(k.split(":")[0])}</span></div>
-    <div>${chip(true)} <span class="small">in the class capture, not in the twin's flows</span></div>${realHtml(f, "")}`;
+  return `<span class="kindtag">${hx(k.split(":")[0])}</span><div class="ttl">${hx(k.split(":")[1])}</div>
+    <div style="margin-top:6px">${chip(true)} <span class="small">in the class capture, not in the twin's flows</span></div>${realHtml(f, "")}`;
 }
+
+// ---- an interface
 function ifaceHtml(name) {
+  const on = x => x.kind === "msg" && (name === "N1" ? !!x.nas : x.interface === name);
   const all = new Map();
-  for (const l of Object.values(DATA.logs)) for (const x of l)
-    if (x.kind === "msg" && (x.interface === name || (name === "N1" && x.nas))) {
-      const m = name === "N1" ? x.nas : x.message;
-      if (!all.has(m)) all.set(m, name === "N1" ? !!capNasKey(x.nas) : !!realFor(x));
-    }
+  for (const l of Object.values(DATA.logs)) for (const x of l) if (on(x)) {
+    const m = name === "N1" ? x.nas : x.message;
+    if (!all.has(m)) all.set(m, name === "N1" ? !!capNasKey(x.nas) : !!realFor(x));
+  }
+  const here = {};                                           // the nearest occurrence in this walk: the latest so far, else the next
+  let count = 0, last = -1;
+  log.forEach((x, i) => { if (!on(x)) return; const m = name === "N1" ? x.nas : x.message; if (i <= cur) { count++; last = i; here[m] = i; } else if (!(m in here)) here[m] = i; });
   const stack = name === "Uu" ? [["RRC signalling", STACK.Uu.rrc], ["user data", STACK.Uu.data], ["broadcast", STACK.Uu.bcch]] : [["", STACK[name] || []]];
   const extra = (CAPTURE_ONLY[name] || []).filter(k => PCAP.index[k]);
-  return `<div class="nfh">${hx(name)}</div><div class="small">${hx(IFACE_INFO[name] || "")}</div>
-    <h3>Protocol stack</h3>${stack.map(([t, s]) => `${t ? `<div class="small">${t}</div>` : ""}<div class="stack">${s.map(p => `<span>${hx(p)}</span>`).join("")}</div>`).join("")}
+  return `<span class="kindtag">Reference point</span><div class="ttl">${hx(name)} <span class="small" style="font-weight:400">${hx(IFACE_ENDS[name] || "")}</span></div>
+    <p class="lead">${hx(IFACE_INFO[name] || "")}</p>
+    <h3>Live</h3><table><tr><td>messages so far on this walk</td><td>${count}</td></tr>
+      <tr><td>latest</td><td>${last < 0 ? "none yet" : `<a data-pkt="${last}">${hx(msgName(log[last]))}</a><br><span class="small">${hx(log[last].src)} → ${hx(log[last].dst)} · ${tS(log[last].t)}</span>`}</td></tr>
+      ${NF_DELAY[name] !== undefined ? `<tr><td>one-way delay</td><td>${NF_DELAY[name]} ms (assumed)</td></tr>` : ""}</table>
+    <h3>Protocol stack <span class="small">lowest layer first</span></h3>${stack.map(([t, s]) => `${t ? `<div class="small" style="margin-top:4px">${t}</div>` : ""}<div class="stack">${s.map(p => `<span style="border-color:${layerColor(p)}55">${hx(p)}</span>`).join("")}</div>`).join("")}
     <h3>Messages on ${hx(name)} in the twin (${all.size})</h3>
-    <table>${[...all].map(([m, real]) => `<tr><td>${hx(name === "N1" ? pretty(m) : m.replace("GTP_U", "GTP-U"))}</td><td>${chip(real)}</td></tr>`).join("")}</table>
+    <table>${[...all].map(([m, real]) => { const label = wb(name === "N1" ? pretty(m) : m.replace("GTP_U", "GTP-U"));
+      return `<tr><td style="width:auto;color:inherit">${m in here ? `<a data-pkt="${here[m]}">${label}</a>` : label}</td><td style="text-align:right">${chip(real)}</td></tr>`; }).join("")}</table>
     ${extra.length ? `<h3>Also in the class capture</h3>${extra.map(k => `<div><a data-cap="${k}">${hx(k.split(":")[1])}</a></div>`).join("")}` : ""}`;
 }
 
-// ---- make the diagram clickable
-for (const [name, g] of Object.entries(nodeEl)) { g.style.cursor = "pointer"; g.addEventListener("click", () => nfOpen(["element", name])); }
-for (const [k, t] of Object.entries(labelEl)) {
-  const iface = k === "N1" ? "N1" : t.textContent;
-  t.style.cursor = "pointer"; t.style.pointerEvents = "all"; t.addEventListener("click", () => nfOpen(["iface", iface]));
+// ---- the message list
+function listRows() {
+  const e = log[cur], flow = NF_LIST.scope === "flow", a = flow ? flowStart(cur) : 0, b = flow ? flowEnd(cur) : log.length - 1, rows = [];
+  for (let i = a; i <= b; i++) {
+    const x = log[i];
+    if (x.kind !== "msg" || (flow && x.flow !== e.flow) || (NF_LIST.dir === "toUE" && x.dst !== "UE") || (NF_LIST.dir === "fromUE" && x.src !== "UE")) continue;
+    rows.push(i);
+  }
+  return { rows, sig: [a, b, NF_LIST.scope, NF_LIST.dir, e.flow].join("|") };
 }
-for (const d of [dot, dotLabel]) { d.style.cursor = "pointer"; d.addEventListener("click", () => nfOpen(["packet", cur])); }
-$("note").classList.add("pklink"); $("note").title = "open this message";
-$("note").addEventListener("click", () => { if (log[cur].kind === "msg") nfOpen(["packet", cur]); });
+function listHtml() {
+  const X = nfIndex(log), e = log[cur], { rows, sig } = listRows();
+  NF_LIST.sig = sig;
+  const btn = (attr, v, text) => `<button data-${attr}="${v}" aria-pressed="${NF_LIST[attr] === v}">${text}</button>`;
+  let flow = null;
+  return `<div class="ttl">Messages</div><div class="sub">${NF_LIST.scope === "flow" ? `Flow ${e.flow}: ${hx(DATA.flows[e.flow])}` : "The whole walk"} · ${rows.length} shown · click one to jump to it</div>
+    <div class="chips">${btn("scope", "flow", "this flow")}${btn("scope", "walk", "whole walk")}<span style="width:8px"></span>${btn("dir", "all", "all")}${btn("dir", "toUE", "to UE")}${btn("dir", "fromUE", "from UE")}</div>
+    <div class="mlist">${rows.map(i => { const x = log[i], head = NF_LIST.scope === "walk" && x.flow !== flow ? `<div><span class="fl" style="background:var(--f${x.flow})">Flow ${x.flow}: ${hx(DATA.flows[x.flow])}</span></div>` : "";
+      flow = x.flow;
+      return `${head}<a class="mr" data-row="${i}" data-jump="${i}"><span class="n">${X.num[i]}</span>
+        <span><span class="m">${wb(msgName(x))}</span><br><span class="w">${hx(x.src)} → ${hx(x.dst)} · ${hx(x.interface)}</span></span><span class="t">${tS(x.t)}</span></a>`; }).join("") || `<div class="small">No such message here.</div>`}</div>`;
+}
+function listRefresh() {
+  if (listRows().sig !== NF_LIST.sig) return nfDraw(true);
+  for (const r of insp.querySelectorAll("[data-row]")) { const i = +r.dataset.row; r.dataset.st = i > cur ? "future" : "done"; r.classList.toggle("cur", i === cur); }
+  if (playing) insp.querySelector(".mr.cur")?.scrollIntoView({ block: "nearest" });
+}
+
+// ---- make the diagram clickable
+for (const [name, g] of Object.entries(nodeEl)) {
+  g.addEventListener("click", () => nfMode && nfMode.kind === "element" && nfMode.name === name ? nfClose() : nfOpen({ kind: "element", name }));
+  g.setAttribute("tabindex", 0); g.setAttribute("role", "button"); g.setAttribute("aria-label", `${POS[name][2]}: ${POS[name][3]}`);   // Tab, then Enter
+  g.addEventListener("keydown", ev => { if (ev.key === "Enter") g.dispatchEvent(new MouseEvent("click")); });
+}
+for (const [k, t] of Object.entries(labelEl)) t.addEventListener("click", () => nfOpen({ kind: "iface", name: k === "N1" ? "N1" : t.textContent }));
+// the moving packet: clicking it pauses the walk there and opens its live status
+// (its name and the area around it never block an interface label that lies under them: there, the click goes to the interface)
+for (const d of [dot, dotLabel]) d.addEventListener("click", ev => {
+  const c = dot.querySelector(".core").getBoundingClientRect();     // on the packet itself, the packet always wins
+  const onPacket = d === dot && Math.hypot(ev.clientX - c.left - c.width / 2, ev.clientY - c.top - c.height / 2) <= c.width / 2 + 1;
+  const under = !onPacket && Object.entries(labelEl).find(([, l]) => { const r = l.getBoundingClientRect();
+    return ev.clientX >= r.left - 2 && ev.clientX <= r.right + 2 && ev.clientY >= r.top - 2 && ev.clientY <= r.bottom + 2; });
+  if (under) return nfOpen({ kind: "iface", name: under[0] === "N1" ? "N1" : under[1].textContent });
+  if (playing) go(cur, false);
+  nfOpen({ kind: "packet", i: cur, live: true });
+});
+$("note").title = "open this message";
+$("note").addEventListener("click", () => { if (log[cur].kind === "msg") nfOpen({ kind: "packet", i: cur, live: true }); });
 document.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => { if (b.dataset.tab !== "mobility") nfClose(); }));
-document.addEventListener("keydown", ev => { if (ev.key === "Escape") nfClose(); });
-// twin.html#route=1&frame=40&nf=AMF opens an element; &pkt=1 opens the current message; &if=N2 an interface
+document.addEventListener("keydown", ev => {
+  if (ev.key === "Escape") return nfClose();
+  if (tab !== "mobility" || /^(INPUT|SELECT|TEXTAREA)$/.test(ev.target.tagName) || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+  if (ev.key === "ArrowLeft" || ev.key === "ArrowRight") { ev.preventDefault(); nfStep(ev.key === "ArrowLeft" ? -1 : 1); }
+});
+if (log) nfRefresh();
+// twin.html#route=1&frame=40&nf=AMF opens an element; &pkt=1 the current message; &if=N2 an interface; &list=1 the message list
 {
   const h = decodeURIComponent(location.hash), get = k => (h.match(new RegExp("[#&]" + k + "=([^&]+)")) || [])[1];
-  setTimeout(() => { if (get("nf")) nfOpen(["element", get("nf")]); if (get("pkt")) nfOpen(["packet", cur]); if (get("if")) nfOpen(["iface", get("if")]); }, 0);
+  setTimeout(() => {
+    nfRefresh();
+    if (get("nf") && nodeEl[get("nf")]) nfOpen({ kind: "element", name: get("nf") });
+    if (get("pkt") && log[cur].kind === "msg") nfOpen({ kind: "packet", i: cur, live: true });
+    if (get("if")) nfOpen({ kind: "iface", name: get("if") });
+    if (get("list")) nfOpen({ kind: "list" });
+  }, 0);
 }
 </script>
 <script>

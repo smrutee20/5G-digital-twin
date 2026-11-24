@@ -412,6 +412,32 @@ v1's task 5 results and `data/twin.json` are not changed (the report's section 3
 - Saved: `data/study_v2/walk_routes.json`, `walk_traces.npz`, `walk_serving_map.npz`; `results/study_v2/task10_walk.png`,
   `task10_walk_routes_map.png`, `task10_walk_routes.csv`, `task10_walk_summary.csv`, `task10_walk_checks.md`.
 
+### 2.13 The 5G Network Visualiser: Click to Look Inside, Live Packet Status
+
+In the **Twin & 5G core** tab everything in the network diagram can be clicked. What it shows opens in an inspector
+between the campus and the diagram (the diagram keeps its place and size, so it is never covered; in a narrow window
+the inspector lies over the campus, on a phone below the diagram).
+
+| Click | The inspector shows |
+|---|---|
+| A network element (UE, gNB-A/B/C, AMF, SMF, UPF, AUSF, UDM, SIDF, NSSF, Internet) | Its role; its **live state** at this point of the walk (UE: RRC_IDLE / RRC_CONNECTED, RM, CM, PDU session, serving sector and RSRP; AMF: RM and CM; SMF: session; UPF: uplink and downlink rule, tunnels, buffered packets, NAT; ...); its protocol stacks, one per interface, with the one in use now marked; the identities it holds; its messages in this flow |
+| A message (the moving packet, the bottom line, any list row) | **Live packet status**: not sent yet / in flight (%) / delivered; its journey hop by hop (a NAS message crosses Uu and N2, a user packet goes UE → gNB → UPF → Internet and back); what caused it and what it triggers; for Uu, the radio link it used, from the ray-traced twin (sector, RSRP, line of sight, next best sector); its encapsulation; its fields (new identities marked); the real frame from the class capture where there is one |
+| An interface label (Uu, N1, N2, N3, N4, N6, N11, SBI, Xn) | Its protocol stack, how many messages have used it so far, every message type on it |
+| **Messages** (top right of the diagram) | The message list of this flow or of the whole walk; **to UE** lists every message that reaches the phone |
+
+- The bottom line always tracks the current message: its journey, a progress bar and its status. ◀ ▶ (or the ← → keys)
+  step message by message; Space plays and pauses. Clicking the moving packet pauses the walk there.
+- The small light on each element shows whether it holds live state for the phone (green: yes; amber: in between, for
+  example an idle phone or a paused session).
+- "Caused by" and "then" come from the simulation's timing: an element handles a message 0.5 ms after it arrives
+  (`config.py`), so the message that made it send the next one can be found exactly. The delays are assumptions; the
+  animation is slowed down so it can be followed.
+- `twin.html#route=1&frame=40&nf=AMF` opens an element, `&pkt=1` the current message, `&if=N2` an interface,
+  `&list=1` the message list. Screenshots: `docs/screenshots/live_packet_to_ue.png`, `nf_panel_ue.png`,
+  `nf_panel_amf.png`, `packet_view_ngap.png`, `message_list_to_ue.png`.
+- Page-only changes can be published without the study data: `python tools/build_site.py --reuse-data` puts the data
+  already inside `docs/index.html` into the current `viewer.html` (it also writes `twin.html` to check locally).
+
 ---
 
 ## 3. Experimental Results
