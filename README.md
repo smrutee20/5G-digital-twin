@@ -6,12 +6,49 @@
 
 - **Works there:** Twin & 5G core (the walking person and every 5G message, with the study's handover rule of 3 dB /
   2 steps), Strategies and What-if. All of their results are precomputed and built into the page.
-- **Only locally:** Configure (antenna settings, gNB positions, UE placement) and handover rules other than 3 dB /
-  2 steps. Both re-run the simulation on the local server (section 2.10): `.venv/bin/python -m server`, then open
-  http://127.0.0.1:8765. On the live site the Configure tab says so instead.
+- **Needs the server on your computer:** Configure (antenna settings, gNB positions, UE placement) and handover rules
+  other than 3 dB / 2 steps. Both re-run the simulation. Start the server with Docker (below); the live site finds it
+  at http://localhost:8765 and uses it. Without it, the Configure tab shows the `docker run` command.
 
 The site is `docs/index.html`, made by `.venv/bin/python tools/build_site.py` (runs `run.py`, then copies `twin.html`
-with the server calls switched off). GitHub Pages: Settings → Pages → branch `main`, folder `/docs`.
+with `STATIC_SITE = true`: the page then calls no server except http://localhost:8765). GitHub Pages: Settings →
+Pages → branch `main`, folder `/docs`.
+
+## Run with Docker
+
+The whole twin, including Configure, on your own computer (Windows, macOS on Intel or Apple silicon, Linux). No
+Python and no GPU are needed: Sionna RT runs on the CPU.
+
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and start it.
+2. Run:
+   ```
+   docker run -p 8765:8765 ghcr.io/smrutee20/5g-digital-twin
+   ```
+3. Open http://localhost:8765 (or reload https://smrutee20.github.io/5G-digital-twin/, which then uses it).
+   Stop with Ctrl+C.
+
+| | Live site, no Docker | Live site + Docker, or http://localhost:8765 |
+|---|---|---|
+| Twin & 5G core (study rule 3 dB / 2 steps), Strategies, What-if | yes | yes |
+| Other handover rules | no | yes |
+| Configure (antennas, gNB positions, UEs, coverage map) | shows the `docker run` command | yes |
+
+- **Size:** about 280 MB to download, 1.3 GB on disk (most of it is Mitsuba, Dr.Jit and LLVM).
+- **First run:** the download, then the server is ready in about 5 s and pre-computes the default coverage map
+  (about 2 s on an Apple M4; give a slower laptop about a minute). A Configure run at the default 1e6 rays then takes
+  a few seconds (about 20 s for 200 UEs on the M4). Repeated settings come from the cache.
+- **Limits** (the server can be reached by any page on your computer): at most 1e6 rays per sector, 50 UEs per
+  request, one simulation at a time (another request gets "try again"). Raise them with `-e TWIN_MAX_RAYS=4e6` or
+  `-e TWIN_MAX_UES=200` on `docker run`.
+- **Safari:** it may block an https page from calling http://localhost. Open http://localhost:8765 instead.
+- **Check it:** http://localhost:8765/health. Run the Configure tests inside it:
+  `docker exec <container> python server/test_configure.py`.
+- **Build it yourself:** `docker build -t 5g-digital-twin .`. `.github/workflows/docker.yml` builds linux/amd64 and
+  linux/arm64 on every push to `main` and pushes `ghcr.io/smrutee20/5g-digital-twin:latest`. The image's page is
+  `viewer.html` + the data inside `docs/index.html` (`tools/build_site.py --twin-only`), so a local build and the
+  CI build show the same twin as the website. (`data/study_v2/` is not in the repository.)
+- **One-time step after the first CI push:** a new GitHub package is private. Make it public: github.com/smrutee20 →
+  Packages → 5g-digital-twin → Package settings → Change visibility → Public. (`GITHUB_TOKEN` cannot do this.)
 
 ## 1. Problem Statement
 
@@ -224,7 +261,7 @@ ray tracing.
 ```
 .venv/bin/python -m pip install -r requirements.txt   # once (adds fastapi and uvicorn)
 .venv/bin/python run.py                               # builds twin.html
-.venv/bin/python -m server                            # http://127.0.0.1:8765
+.venv/bin/python -m server                            # http://127.0.0.1:8765 (or: Docker, see Run with Docker)
 ```
 
 Open http://127.0.0.1:8765 and choose the **Configure** tab. (Opening `twin.html` directly also works while the server
@@ -254,7 +291,7 @@ press **Run**.
 | UE | array, pattern, polarization | 1x1, iso, V (arrays 1x2, 2x2, 4x4 available) |
 | | height | 1.5 m |
 | | noise figure | 9 dB |
-| Ray tracing | rays per sector | 1e6; 2e5 (fast) and 4e6 selectable |
+| Ray tracing | rays per sector | 1e6; 2e5 (fast) selectable; 4e6 only with `TWIN_MAX_RAYS=4e6` (limit, see Run with Docker) |
 | | bounces | 3 + diffraction |
 | Coverage | grid, threshold | 5 m, RSRP > −110 dBm (editable) |
 

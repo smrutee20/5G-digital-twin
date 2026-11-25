@@ -2,6 +2,7 @@
 The Configure server: a small FastAPI app on localhost around the twin's Sionna RT scene.
 
   GET  /             the twin page (twin.html, made by python run.py), so the Configure tab can reach this server
+  GET  /health       is the server up (the GitHub Pages copy of the page looks for http://localhost:8765/health)
   GET  /defaults     the default gNB and UE settings, the 9 sectors, ray counts, grid
   GET  /random_ues   n random outdoor UE positions
   GET  /check_position  is (x, y) inside a building? (moving a gNB)
@@ -12,8 +13,15 @@ The Configure server: a small FastAPI app on localhost around the twin's Sionna 
 
 All Sionna work runs on one worker thread (the scene is reconfigured per request and is not thread-safe).
 Start:  .venv/bin/python -m server      (http://127.0.0.1:8765)
+
+Limits (the server can be reached from the GitHub Pages site and, in Docker, from the network):
+  at most TWIN_MAX_RAYS rays per sector (default 1e6, the study's), TWIN_MAX_UES UEs per request (default 50), and one
+  simulation at a time (a second /simulate while one runs gets 429). CORS: the GitHub Pages site, this server's own
+  page, http://localhost / 127.0.0.1 on any port, and file:// (origin "null"); TWIN_CORS_ORIGINS adds more
+  (comma-separated).
 """
 import asyncio
+import os
 import time
 from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor
@@ -30,8 +38,11 @@ from server.cache import LRU, MapCache, config_hash
 
 ROOT = engine.ROOT
 SECTOR_NAMES = [s["name"] for s in engine.default_sectors()]
-RAY_CHOICES = (200_000, 1_000_000, 4_000_000)
-DEFAULT_RAYS = 1_000_000                        # the page starts at the study's 1e6; 2e5 stays as a fast option
+MAX_RAYS = int(float(os.environ.get("TWIN_MAX_RAYS", "1e6")))     # safety limit (rays per sector)
+MAX_UES = int(os.environ.get("TWIN_MAX_UES", "50"))               # safety limit (UEs per request)
+RAY_CHOICES = tuple(r for r in (200_000, 1_000_000, 4_000_000) if r <= MAX_RAYS) or (200_000,)
+DEFAULT_RAYS = min(1_000_000, max(RAY_CHOICES))  # the page starts at the study's 1e6; 2e5 stays as a fast option
+PAGES_ORIGIN = "https://smrutee20.github.io"     # the GitHub Pages copy of the page (docs/index.html)
 
 
 def _sionna_version():
@@ -79,7 +90,7 @@ class UE(BaseModel):
 class SimulateRequest(BaseModel):
     sectors: list[Sector]
     ue: UESettings = UESettings()
-    ues: list[UE] = Field(default_factory=list, max_length=500)
+    ues: list[UE] = Field(default_factory=list, max_length=MAX_UES)
     coverage: bool = True
     threshold_dbm: float = -110.0
     rays: int = DEFAULT_RAYS
@@ -96,7 +107,7 @@ class SimulateRequest(BaseModel):
     @classmethod
     def ray_choice(cls, v):
         if v not in RAY_CHOICES:
-            raise ValueError(f"rays must be one of {RAY_CHOICES}")
+            raise ValueError(f"rays must be one of {RAY_CHOICES} (this server's limit is {MAX_RAYS:.0e})")
         return v
 
 
@@ -205,23 +216,49 @@ def _simulate(req: SimulateRequest):
 
 
 # ---------------------------------------------------------------------- the app
+_sim_lock = asyncio.Lock()                      # one simulation at a time
+
+
+def _warmup_done(fut):
+    _state["ready_s"] = round(time.time() - _state["started"], 1)
+    if fut.exception() is not None:
+        _state["warmup_error"] = repr(fut.exception())
+        print("warm-up failed:", _state["warmup_error"], flush=True)
+    else:
+        print(f"ready: default coverage map computed in {_state['ready_s']} s", flush=True)
+
+
 @asynccontextmanager
 async def _lifespan(app):
     """Load the scene and pre-compute the default coverage map in the background (a cache hit when the tab opens)."""
     req = SimulateRequest(sectors=[Sector(**s) for s in engine.default_sectors()])
-    asyncio.get_running_loop().run_in_executor(_pool, _simulate, req)
+    _state["started"] = time.time()
+    _state["warmup"] = asyncio.get_running_loop().run_in_executor(_pool, _simulate, req)
+    _state["warmup"].add_done_callback(_warmup_done)
     yield
 
 
 app = FastAPI(title="IITGN 5G twin: Configure", lifespan=_lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])  # file:// page
+_extra_origins = [o.strip() for o in os.environ.get("TWIN_CORS_ORIGINS", "").split(",") if o.strip()]
+app.add_middleware(CORSMiddleware, allow_origins=[PAGES_ORIGIN, "null", *_extra_origins],   # "null" = file:// page
+                   allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?", allow_methods=["GET", "POST"],
+                   allow_headers=["Content-Type"],
+                   allow_private_network=True)    # Chrome asks before a public https page may call localhost
+
+
+@app.get("/health")
+async def health():
+    warm = _state.get("warmup")
+    return dict(status="ok", ready=warm is not None and warm.done() and "warmup_error" not in _state,
+                busy=_sim_lock.locked(), ready_after_s=_state.get("ready_s"), warmup_error=_state.get("warmup_error"),
+                limits=dict(max_rays=MAX_RAYS, max_ues=MAX_UES, simulations_at_a_time=1))
 
 
 @app.get("/defaults")
 async def defaults():
     return dict(gnb=engine.GNB_DEFAULT, ue=engine.UE_DEFAULT, sectors=engine.default_sectors(),
                 gnb_xy=engine.site_xy(), rays=DEFAULT_RAYS, ray_choices=list(RAY_CHOICES), study_rays=engine.sc.RAYS_PER_SECTOR,
-                grid_m=engine.GRID_M, threshold_dbm=-110.0, frequency_hz=engine.sc.FREQUENCY_HZ,
+                grid_m=engine.GRID_M, threshold_dbm=-110.0, max_ues=MAX_UES, frequency_hz=engine.sc.FREQUENCY_HZ,
                 bandwidth_hz=engine.sc.BANDWIDTH_HZ, num_prb=engine.sc.NUM_PRB,
                 category="A predictive digital twin of the IITGN campus 5G radio network.",
                 scenes={k: dict(label=v, available=engine.sc.SCENES[k].exists()) for k, v in SCENE_LABEL.items()})
@@ -229,8 +266,8 @@ async def defaults():
 
 @app.get("/random_ues")
 async def random_ues(n: int = 20, seed: int = 1, scene: Literal["v1", "v2"] = "v1"):
-    if not 1 <= n <= 500:
-        raise HTTPException(422, "n must be 1..500")
+    if not 1 <= n <= MAX_UES:
+        raise HTTPException(422, f"n must be 1..{MAX_UES}")
     xy = await _run(lambda: _twin(scene).random_ues(n, seed))
     return dict(ues=[dict(x=round(float(x), 2), y=round(float(y), 2)) for x, y in xy])
 
@@ -245,7 +282,14 @@ async def check_position(x: float, y: float, scene: Literal["v1", "v2"] = "v1"):
 
 @app.post("/simulate")
 async def simulate(req: SimulateRequest):
-    return await _run(_simulate, req)
+    warm = _state.get("warmup")
+    if warm is not None and not warm.done():            # the start-up map: wait for it (usually a cache hit after)
+        await asyncio.wait([asyncio.shield(warm)])
+    if _sim_lock.locked():
+        raise HTTPException(429, "Another simulation is running (this server runs one at a time); "
+                                 "try again when it finishes.")
+    async with _sim_lock:
+        return await _run(_simulate, req)
 
 
 # ---------------------------------------------------------------------- Mobility tab: handover rule -> timeline
@@ -259,12 +303,20 @@ _timelines = LRU(64)
 
 
 def _walk_routes():
-    """The routes the page walks: task 10's v2 routes if saved (as run.py does), else data/twin.json's."""
+    """The routes the page walks: task 10's v2 routes if saved (as run.py does), else the routes inside twin.html
+    (the Docker image builds it from the published page's data; data/study_v2/ is not in the repository), else
+    data/twin.json's."""
     import json
     f = ROOT / "data" / "study_v2" / "walk_routes.json"
     if "walk" not in _state:
-        _state["walk"] = json.loads(f.read_text())["routes"] if f.exists() else \
-            json.loads((ROOT / "data" / "twin.json").read_text())["routes"]
+        if f.exists():
+            _state["walk"] = json.loads(f.read_text())["routes"]
+        elif (ROOT / "twin.html").exists():
+            page, mark = (ROOT / "twin.html").read_text(encoding="utf-8"), "const DATA = "
+            data, _ = json.JSONDecoder().raw_decode(page[page.index(mark) + len(mark):])
+            _state["walk"] = data["twin"]["routes"]
+        else:
+            _state["walk"] = json.loads((ROOT / "data" / "twin.json").read_text())["routes"]
     return _state["walk"]
 
 

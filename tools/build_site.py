@@ -2,14 +2,19 @@
 Build the GitHub Pages site (static only, no server):  .venv/bin/python tools/build_site.py
 
   1. runs run.py, which writes twin.html (the twin data and three.js are already inside it)
-  2. copies it to docs/index.html with STATIC_SITE = true: the page then never calls the local server, so the
-     Configure tab shows "Configure needs the local server (see README)" and other handover rules say so
-  3. checks the copy loads nothing from outside the file (no 127.0.0.1, no file paths, no <script src>/<link href>)
+  2. copies it to docs/index.html with STATIC_SITE = true: the page then looks for a server only at
+     http://localhost:8765/health (the Docker image on the visitor's computer). If one answers, Configure and other
+     handover rules use it; if not, Configure shows the "docker run ..." box and other handover rules say so
+  3. checks the copy loads nothing from outside the file (no 127.0.0.1, no file paths, no <script src>/<link href>;
+     http://localhost:8765 is the one allowed address)
 
 Page-only changes (viewer.html edited, same data):  python tools/build_site.py --reuse-data
   Skips run.py: takes the twin data that is already inside docs/index.html and puts it into the current viewer.html.
   Use it on a machine without the study data (data/study_v2/ is not in the repository, and without it run.py would
   fall back to the v1 routes). It also writes twin.html, so the result can be opened and checked locally.
+
+Docker image (Dockerfile):  python tools/build_site.py --twin-only
+  Only twin.html, as --reuse-data, for the image's server; docs/index.html is not touched.
 
 docs/screenshots/ is left as it is. GitHub Pages: Settings -> Pages -> branch main, folder /docs.
 """
@@ -22,6 +27,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SRC, OUT = ROOT / "twin.html", ROOT / "docs" / "index.html"
 MARK = "const DATA = "
+LOCAL_SERVER = '"http://localhost:8765"'                       # viewer.html's LOCAL_SERVER (the Docker image)
 
 
 def reuse_data():
@@ -44,6 +50,9 @@ def reuse_data():
 
 
 def main():
+    if "--twin-only" in sys.argv:
+        reuse_data()
+        return
     if "--reuse-data" in sys.argv:
         reuse_data()
     else:
@@ -55,8 +64,10 @@ def main():
     page = page.replace(flag, "const STATIC_SITE = true;")
     page = page.replace('"http://127.0.0.1:8765"', "null")          # the (unused) local-server address
 
-    problems = [p for p in ("127.0.0.1", "localhost:", "file://", "/Users/") if p in page]
-    problems += re.findall(r'<script[^>]+src=|<link[^>]+href="(?!data:)|<img[^>]+src="(?!data:)', page)
+    assert page.count(LOCAL_SERVER) == 1, "viewer.html: LOCAL_SERVER not found"
+    checked = page.replace(LOCAL_SERVER, "")                        # the one allowed address (see step 2)
+    problems = [p for p in ("127.0.0.1", "localhost:", "file://", "/Users/") if p in checked]
+    problems += re.findall(r'<script[^>]+src=|<link[^>]+href="(?!data:)|<img[^>]+src="(?!data:)', checked)
     if problems:
         sys.exit(f"docs/index.html would load outside resources: {sorted(set(problems))}")
 

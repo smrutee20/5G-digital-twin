@@ -118,6 +118,8 @@ body.cfg #netSection { display: none; }
 .cfgstatus.err { color: var(--hl); font-weight: 600; }
 #cfgTable tr { cursor: pointer; }
 #cfgTable tr.sel td { background: #fdecec; }
+.runbox { font-size: 13px; line-height: 1.5; color: #1e293b; background: #eef4ff; border: 1px solid #bfd3fb; border-radius: 8px; padding: 10px 12px; max-width: 460px; }
+.runbox code { display: block; margin: 6px 0; padding: 6px 8px; background: #fff; border: 1px solid #d6e2fb; border-radius: 6px; font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; user-select: all; overflow-wrap: anywhere; }
 .alert { display: inline-block; font-size: 12px; font-weight: 600; color: #1e40af; background: #eef4ff; border: 1px solid #bfd3fb; border-radius: 6px; padding: 4px 10px; }
 #uePanel.empty { width: auto; padding: 0; border: 0; background: none; }
 .cfggrp { display: grid; grid-template-columns: 82px 1fr; gap: 6px 8px; align-items: center; margin: 4px 0; }
@@ -321,10 +323,20 @@ body:not(.heat) #signal #bar, body:not(.heat) #signal #barTicks, body:not(.heat)
 <!--LIBRARIES-->
 <script>
 const DATA = /*DATA*/null;
-// The local server (python -m server) for the Configure tab and other handover rules. tools/build_site.py sets
-// STATIC_SITE = true for the GitHub Pages copy (docs/index.html): no server there, so the page never calls one.
+// The local server (python -m server, or the Docker image) for the Configure tab and other handover rules.
+// tools/build_site.py sets STATIC_SITE = true for the GitHub Pages copy (docs/index.html): that page has no server of
+// its own, so it asks LOCAL_SERVER/health once; if a server answers (docker run -p 8765:8765 ...) it uses that one.
 const STATIC_SITE = false;
-const SERVER = STATIC_SITE ? null : location.protocol.startsWith("http") ? "" : "http://127.0.0.1:8765";
+const LOCAL_SERVER = "http://localhost:8765";
+let SERVER = STATIC_SITE ? null : location.protocol.startsWith("http") ? "" : "http://127.0.0.1:8765";
+const serverReady = STATIC_SITE ? findLocalServer() : Promise.resolve(SERVER);
+async function findLocalServer() {
+  try {
+    const r = await fetch(LOCAL_SERVER + "/health", { cache: "no-store", signal: AbortSignal.timeout(3000) });
+    if (r.ok && (await r.json()).status === "ok") SERVER = LOCAL_SERVER;
+  } catch (e) { /* no server on this computer: Configure shows how to start one */ }
+  return SERVER;
+}
 const T = DATA.twin, SECTORS = T.sectors, NAMES = SECTORS.map(s => s.name);
 // Display names only: sectors are numbered by azimuth within each site (A60 -> A1 ...); the data and the server keep
 // the original IDs. The baseline strategies B1/B2 are shown as Fixed/Random (so they do not clash with sectors B1/B2).
@@ -543,6 +555,7 @@ function a3(rsrp, off, ttt) {
 async function timelineFor(id) {                           // the log for this route under the current rule
   const k = ruleKey(id);
   if (!LOGS[k]) {
+    await serverReady;
     if (SERVER == null) throw new Error("no server on the static site");
     const r = await fetch(SERVER + "/timeline", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ route: +id, offset_db: RULE.off, ttt_steps: RULE.ttt }) });
@@ -1683,11 +1696,16 @@ async function api(path, body) {
 async function cfgInit() {
   if (CF.defaults) return;
   try {
+    await serverReady;
     CF.defaults = await api("/defaults");
   } catch (e) {
-    // no server (e.g. the GitHub Pages copy): one short message; the tab's controls are not drawn and clicks on the
-    // campus do nothing (they need CF.defaults)
-    $("cfgPane").innerHTML = `<div class="alert">Configure needs the local server (see README)</div>`;
+    // no server (e.g. the GitHub Pages copy and no container running): one short box; the tab's controls are not
+    // drawn and clicks on the campus do nothing (they need CF.defaults)
+    $("cfgPane").innerHTML = STATIC_SITE
+      ? `<div class="runbox"><b>Run Configure on your computer:</b>
+           <code>docker run -p 8765:8765 ghcr.io/smrutee20/5g-digital-twin</code>
+           then reload this page (or open <a href="${LOCAL_SERVER}" target="_blank" rel="noopener">${LOCAL_SERVER}</a>).</div>`
+      : `<div class="alert">Configure needs the local server (see README)</div>`;
     return;
   }
   CF.defaults.gnb_xy = CF.defaults.gnb_xy || Object.fromEntries(Object.entries(T.sites).map(([k, v]) => [k, v.xy]));
@@ -1758,7 +1776,7 @@ function cfgDrawPane() {
         <select id="cfRays">${CF.defaults.ray_choices.map(r => `<option value="${r}" ${r === CF.rays ? "selected" : ""}>${raysText(r)}</option>`).join("")}</select>
         <button class="primary" id="cfRun">Run</button></div>
         <span>UEs</span><div>
-        <input type="number" id="cfN" value="20" min="1" max="500" title="number of random UEs"><button id="cfRandom">Random UEs</button><button id="cfClear">Clear</button></div>
+        <input type="number" id="cfN" value="20" min="1" max="${CF.defaults.max_ues || 500}" title="number of random UEs (at most ${CF.defaults.max_ues || 500} UEs in all)"><button id="cfRandom">Random UEs</button><button id="cfClear">Clear</button></div>
         <span>Settings</span><div><button id="cfDefaults">Defaults</button><button id="cfReset">Reset</button></div>
       </div>
       <div id="cfgCov"></div>
@@ -1790,7 +1808,9 @@ function cfgDrawPane() {
   $("cfRun").onclick = () => run(true);
   $("cfRandom").onclick = async () => {
     try {
-      const r = await api(`/random_ues?n=${+$("cfN").value}&seed=${CF.nextId}&scene=${twinScene()}`);
+      const room = (CF.defaults.max_ues || 500) - CF.ues.length, n = Math.min(+$("cfN").value, room);
+      if (n < 1) { setStatus(`At most ${CF.defaults.max_ues} UEs: remove some first`, "err"); return; }
+      const r = await api(`/random_ues?n=${n}&seed=${CF.nextId}&scene=${twinScene()}`);
       r.ues.forEach(p => CF.ues.push({ id: "u" + CF.nextId++, x: p.x, y: p.y }));
       cfgDrawTable(); cfgDrawUEs(); frameCamera(CF.ues.map(u => [u.x, u.y])); run(false);
     } catch (e) { setStatus("Server error: " + e.message, "err"); }
@@ -1976,6 +1996,7 @@ addEventListener("pointerup", e => {
   if (moved || e.target !== renderer.domElement) return;   // that was a camera move
   const p = groundAt(e);
   if (!p) return;
+  if (CF.ues.length >= (CF.defaults.max_ues || 500)) { setStatus(`At most ${CF.defaults.max_ues} UEs: remove some first`, "err"); return; }
   const id = "u" + CF.nextId++;
   CF.ues.push({ id, x: +p[0].toFixed(2), y: +p[1].toFixed(2) }); CF.selected = id;
   cfgDrawTable(); cfgDrawUEs(); run(false);

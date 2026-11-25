@@ -1,0 +1,59 @@
+# Build the twin's Docker image for linux/amd64 and linux/arm64 and push it to
+# ghcr.io/smrutee20/5g-digital-twin:latest on every push to main.
+name: Docker image
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE: ghcr.io/smrutee20/5g-digital-twin
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3          # arm64 is built under emulation
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=IITGN 5G digital twin: 3D page and Configure server (Sionna RT on CPU)
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # GITHUB_TOKEN cannot change a package's visibility. Make it public once by hand (see README):
+      # github.com/smrutee20 -> Packages -> 5g-digital-twin -> Package settings -> Change visibility -> Public.
+      - name: Check the image can be pulled without logging in
+        run: |
+          docker logout ghcr.io
+          if docker manifest inspect "$IMAGE:latest" > /dev/null 2>&1; then
+            echo "The image is public."
+          else
+            echo "::warning::$IMAGE is private. Make it public once: Packages -> 5g-digital-twin -> Package settings -> Change visibility."
+          fi
